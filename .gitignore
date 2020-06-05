@@ -1,5 +1,16 @@
-/[Bb]uild/
-/[Ii]nstall/
+/[Bb]uild*/
+/[Ii]nstall*/
+/cmake-build-debug/
+*.laz
+*.las
+*.pcd
+*.csv
+*.pcap
+*.rw5
+*.gpx
+*.txt
+*.kml
+.DS_Store
 
 # JetBrains
 .idea/
