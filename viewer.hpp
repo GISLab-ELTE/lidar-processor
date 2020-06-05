@@ -1,3 +1,12 @@
+/*
+ * BSD 3-Clause License
+ * Copyright (c) 2019-2020, Máté Cserép
+ * All rights reserved.
+ *
+ * You may obtain a copy of the License at
+ * https://opensource.org/licenses/BSD-3-Clause
+ */
+
 #ifndef HDLPROCESSOR_VIEWER_HPP
 #define HDLPROCESSOR_VIEWER_HPP
 
@@ -34,6 +43,7 @@ public:
      * Run 3D point cloud visualizer
      */
     void run();
+    void showCloud(typename pcl::PointCloud<PointType>::Ptr cloud);
 
     /**
      * Update visualized point cloud
@@ -64,18 +74,19 @@ void Viewer<PointType>::run()
     {
         // Update viewer
         _viewer->spinOnce();
-
         std::unique_lock<std::mutex> lock(_mutex, std::try_to_lock);
         if (lock.owns_lock() && _cloud && _hasUpdate)
         {
             // Update point cloud
             _handler.setInputCloud(_cloud);
             if (!_viewer->updatePointCloud(_cloud, _handler))
-                _viewer->addPointCloud(_cloud, _handler);
+                _viewer->addPointCloud(_cloud, _handler,"cloud");
+            _viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
             _hasUpdate = false;
         }
     }
 }
+
 } //olp
 
 #endif //HDLPROCESSOR_VIEWER_HPP
