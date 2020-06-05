@@ -1,0 +1,5 @@
+/[Bb]uild/
+/[Ii]nstall/
+
+# JetBrains
+.idea/
