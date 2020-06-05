@@ -7,3 +7,9 @@
 [submodule "vendor/TinyEKF"]
 	path = vendor/TinyEKF
 	url = https://github.com/simondlevy/TinyEKF.git
+[submodule "vendor/libnabo"]
+	path = vendor/libnabo
+	url = https://github.com/ethz-asl/libnabo.git
+[submodule "vendor/libpointmatcher"]
+	path = vendor/libpointmatcher
+	url = https://github.com/ethz-asl/libpointmatcher.git
