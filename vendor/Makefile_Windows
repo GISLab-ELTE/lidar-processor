@@ -1,0 +1,19 @@
+CMAKE = cmake -DCMAKE_GENERATOR_PLATFORM=x64
+BUILD = msbuild /p:Configuration=Release
+MKDIR = mkdir
+RMDIR = rmdir /s /q
+
+.PHONY: all
+all: LASlib
+
+.PHONY: LASlib
+LASlib:
+	cd LAStools && \
+	$(MKDIR) build && cd build && \
+	$(CMAKE) -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CONFIGURATION_TYPES=Release .. && \
+	$(BUILD) ALL_BUILD.vcxproj && \
+	$(BUILD) INSTALL.vcxproj
+
+.PHONY: clean
+clean:
+	$(RMDIR) LAStools\build LAStools\install
