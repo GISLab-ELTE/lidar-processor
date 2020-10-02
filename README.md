@@ -18,6 +18,9 @@ olp --file datafile.pcap
 ```
 To be able to read from file, the *PCL* dependency must be compiled with PCAP support (see [How to compile](#how-to-compile)).
 
+### Localization and mapping
+The program currently supports the dynamic localization of acquired point clouds with GNSS data. For further details and examples, see the guide on [Localization and mapping](LOCALIZATION.md).
+
 ## How to compile
 
 The project uses some third-party dependencies:
