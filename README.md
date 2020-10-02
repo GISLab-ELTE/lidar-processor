@@ -35,3 +35,11 @@ The complete compilation process depends on the system you are using (Linux, Mac
  * [Ubuntu](INSTALL_UBUNTU.md)
  * [MacOS](INSTALL_MACOS.md)
  * [Windows](INSTALL_WINDOWS.md)
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on coding conventions.
+
+## License
+
+This project is licensed under the BSD 3-Clause License - see the [LICENSE](LICENSE) file for details.
