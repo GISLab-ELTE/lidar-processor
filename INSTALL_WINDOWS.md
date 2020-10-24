@@ -15,7 +15,7 @@ For Windows operating systems binary releases are available for the dependencies
 
 In order to support reading PCAP files, PCL must be compiled with the **WITH_PCAP** flag. Unfortunately the official prebuilt binaries are built without it. If reading PCAP files is a required functionality, you must:
  1. Install a PCAP library (e.g. [Npcap](https://nmap.org/npcap/))
- 2. Compile PCL manually with the *WITH_PCAP* flag, for which you should check the [official guide](http://pointclouds.org/documentation/tutorials/compiling_pcl_windows.php).  
+ 2. Compile PCL manually with the *WITH_PCAP* flag, for which you should check the [official guide](https://pcl.readthedocs.io/projects/tutorials/en/latest/compiling_pcl_windows.html).  
  Note, that version 1.8 or higher is required for PCAP integration.
 
 ## Submodules
