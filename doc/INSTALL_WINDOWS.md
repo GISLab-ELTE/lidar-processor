@@ -40,10 +40,12 @@ make -f Makefile_Windows
 ## Compile the program
 ```bash
 mkdir build && cd build
-cmake .. -DCMAKE_GENERATOR_PLATFORM=[x86|x64]
+cmake .. -DCMAKE_GENERATOR_PLATFORM=[x86|x64] -DWITH_SLAM=OFF
 msbuild ALL_BUILD.vcxproj /p:Configuration=Release
 ```
 Pay attention to set the value of the `CMAKE_GENERATOR_PLATFORM` option correctly, matching the architecture of the installed PCL, otherwise compilation will fail.
+
+*Note:* there is **no** SLAM support currently on Windows due to some dependencies of the implemented algorithms (*libpointmatcher*). You may try [Windows using WSL](INSTALL_WINDOWS_WSL.md) instead.
 
 ### Typical issues
  * **Issue:** the Boost library is not found upon CMake configuration.  

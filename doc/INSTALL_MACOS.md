@@ -1,17 +1,22 @@
-# Guide: How to compile on Ubuntu
+# Guide: How to compile on macOS
 
-This guide shows how to compile the *Online LiDAR Processor (OLP)* on Ubuntu with GCC.  
-Tested on Ubuntu Bionic (18.04 LTS).
+This guide shows how to compile the *Online LiDAR Processor* on macOs with HomeBrew.  
+Tested on macOS Catalina (10.15.1).
 
 ## Install the dependencies
+
+First, download and install *HomeBrew* if you do not have it already.
+```bash
+/usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+```
 
 In order to support reading PCAP files, PCL must be compiled with the **WITH_PCAP** flag. Unfortunately the official prebuilt libraries are built without it.
 
 ### Without PCAP support
 
-If reading PCAP files is not a required functionality (you would like to work directly with the Velodyne sensor), all dependencies can be installed from the standard package repository.
+If reading PCAP files is not a required functionality (you would like to work directly with the Velodyne sensor), all dependencies can be installed from the HomeBrew package repository.
 ```bash
-sudo apt-get install build-essential cmake libboost-all-dev libpcl-dev libproj-dev
+brew install cmake boost libpcl proj
 ```
 
 ### With PCAP support
@@ -19,21 +24,17 @@ sudo apt-get install build-essential cmake libboost-all-dev libpcl-dev libproj-d
 Install the dependencies (except PCL) from package repository:
 ```bash
 # Install build tools
-sudo apt-get install build-essential cmake
-# Install the Boost library
-sudo apt-get install libboost-all-dev
+brew install cmake
 # Install mandatory dependencies for PCL
-sudo apt-get install libboost-all-dev libeigen3-dev libflann-dev libvtk6-dev libvtk6-qt-dev \
- libproj-dev libpcap-dev
+brew install boost eigen flann vtk proj libpcap
 # Install optional dependencies for PCL
-sudo apt-get install libqhull-dev libopenni-dev
+brew install qhull
 ```
 
 Download and compile PCL with PCAP support (version 1.8+ required for PCAP integration):
 ```bash
-wget https://github.com/PointCloudLibrary/pcl/archive/pcl-1.9.1.tar.gz
-tar -xvf pcl-1.9.1.tar.gz
-cd pcl-pcl-1.9.1
+git clone https://github.com/PointCloudLibrary/pcl.git
+cd pcl
 
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DWITH_PCAP=YES ..
@@ -45,6 +46,8 @@ sudo make install
 
 The project depends on some locally built tools:
 * [LASlib](https://github.com/LAStools/LAStools/tree/master/LASlib)
+* [libpointmatcher](https://github.com/ethz-asl/libpointmatcher)
+* [libnabo](https://github.com/ethz-asl/libnabo)
 
 Check out the repository, then initialize the submodules to download the locally built dependencies:
 ```bash

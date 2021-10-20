@@ -1,6 +1,6 @@
-# Localization and mapping
+# Localization and mapping with GNSS sensor
 
-The program currently supports the dynamic localization of acquired point clouds with GNSS data.  
+The program supports the dynamic localization of acquired point clouds with GNSS data.  
 Both the point cloud and the GNSS measurements must be pre-recorded and saved to files.
 
 ## How to prepare files
