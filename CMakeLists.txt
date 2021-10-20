@@ -16,6 +16,15 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# SLAM support (not Windows compatible)
+option(WITH_SLAM "Build SLAM algorithms" ON) # Enabled by default
+if(WITH_SLAM)
+    add_definitions(-DWITH_SLAM)
+    message(STATUS "Building with SLAM support")
+else()
+    message(STATUS "Building without SLAM support")
+endif()
+
 # Set Visual Studio startUp project
 # (Requires CMake 3.6.0 RC1 or later)
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT "olp")
@@ -84,7 +93,7 @@ add_executable(olp
     helpers/TinyEKFHelper.cpp helpers/TinyEKFHelper.h
     helpers/CsvFileWriter.h
     helpers/Utility.h
-    helpers/ViewHelper.h
+    helpers/ViewerHelper.h
     piping/ProcessorPipe.hpp
     compute/Processor.h
     compute/Producer.hpp
