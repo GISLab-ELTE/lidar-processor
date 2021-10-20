@@ -1,6 +1,6 @@
 /*
  * BSD 3-Clause License
- * Copyright (c) 2020, Levente Kiss
+ * Copyright (c) 2020-2021, Levente Kiss & Péter Farkas
  * All rights reserved.
  *
  * You may obtain a copy of the License at
@@ -12,6 +12,8 @@
 
 #include <pointmatcher/PointMatcher.h>
 
+#include "../../helpers/ViewerHelper.h"
+#include "../../helpers/Utility.h"
 #include "Calculator.h"
 
 namespace olp
@@ -28,23 +30,26 @@ template<typename PointType>
 class ICPSLAMCalculator : public Calculator<PointType>
 {
 public:
-    ICPSLAMCalculator(double angle, int processEveryX = 1) : Calculator<PointType>(angle),
-                                                             PROCESSEVERYX_(processEveryX) {}
+    ICPSLAMCalculator(TransformData data, int processEveryX = 1) : Calculator<PointType>(data),
+                                                             PROCESSEVERYX(processEveryX) {}
 
     TransformData calculate(typename pcl::PointCloud<PointType>::ConstPtr input) override;
 
+    const std::string stringId() const override
+    {
+        return "ICP";
+    }
+
 protected:
-    PM::ICP icp_;
-    const int PROCESSEVERYX_;
+    PM::ICP icp;
+    const int PROCESSEVERYX;
 
-    void configureICP_();
+    void configureICP();
 
-    float calculateError_(const DP& referenceCloud, const DP& readingCloud, const Eigen::MatrixXf& transform);
+    float calculateError(const DP& referenceCloud, const DP& readingCloud, const Eigen::MatrixXf& transform);
 
     inline void
-    convertToDataPointsAndApplyDefaultRotation_(typename pcl::PointCloud<PointType>::ConstPtr input, DP& out);
-
-    inline TransformData convertToTransformData_(const Eigen::Matrix4f& transformationMatrix);
+    convertToDataPoints(typename pcl::PointCloud<PointType>::ConstPtr input, DP& out);
 
 private:
     DP _clouds[2];
@@ -55,27 +60,28 @@ private:
 template<typename PointType>
 TransformData ICPSLAMCalculator<PointType>::calculate(typename pcl::PointCloud<PointType>::ConstPtr input)
 {
-    if (_cloudCount % PROCESSEVERYX_ == 0)
+    if (_cloudCount % PROCESSEVERYX == 0)
     {
         DP cloud;
-        convertToDataPointsAndApplyDefaultRotation_(input, cloud);
+        convertToDataPoints(input, cloud);
         if (_cloudCount == 0)
         {
             _clouds[0] = cloud;
             _cloudCount++;
             return TransformData();
         }
-        configureICP_();
+        configureICP();
         const DP reference = cloud;
         const DP reading = _clouds[0];
-        PM::TransformationParameters transform = icp_(reading, reference);
+        PM::TransformationParameters transform = icp(reading, reference);
         _clouds[0] = cloud;
 
 //            std::cerr << "---------------" << std::endl
-//                    << "icp error: " << calculateError_(reference,reading,transform) << std::endl
+//                    << "icp error: " << calculateError(reference,reading,transform) << std::endl
 //                    << "---------------" << std::endl << std::endl;
         _cloudCount++;
-        return convertToTransformData_(transform);
+
+        return TransformData(transform.inverse().cast<double>(), 70);
     }
     else
     {
@@ -85,9 +91,9 @@ TransformData ICPSLAMCalculator<PointType>::calculate(typename pcl::PointCloud<P
 }
 
 template<typename PointType>
-void ICPSLAMCalculator<PointType>::configureICP_()
+void ICPSLAMCalculator<PointType>::configureICP()
 {
-    icp_ = PM::ICP();
+    icp = PM::ICP();
     PointMatcherSupport::Parametrizable::Parameters params;
     std::string name;
 
@@ -165,34 +171,34 @@ void ICPSLAMCalculator<PointType>::configureICP_()
         PM::get().TransformationRegistrar.create("RigidTransformation");
 
     // Build ICP solution
-    icp_.readingDataPointsFilters.push_back(rand_read);
+    icp.readingDataPointsFilters.push_back(rand_read);
 
-    icp_.referenceDataPointsFilters.push_back(rand_ref);
-    icp_.referenceDataPointsFilters.push_back(sensor_direction);
-    icp_.referenceDataPointsFilters.push_back(normal);
-    icp_.referenceDataPointsFilters.push_back(normal_orient);
+    icp.referenceDataPointsFilters.push_back(rand_ref);
+    icp.referenceDataPointsFilters.push_back(sensor_direction);
+    icp.referenceDataPointsFilters.push_back(normal);
+    icp.referenceDataPointsFilters.push_back(normal_orient);
 
-    icp_.matcher.swap(kdtree);
+    icp.matcher.swap(kdtree);
 
-    icp_.outlierFilters.push_back(dist);
+    icp.outlierFilters.push_back(dist);
 
-    icp_.errorMinimizer.swap(pointToPlane);
+    icp.errorMinimizer.swap(pointToPlane);
 
-    icp_.transformationCheckers.push_back(maxTrans);
-    icp_.transformationCheckers.push_back(maxIter);
-    icp_.transformationCheckers.push_back(diff);
+    icp.transformationCheckers.push_back(maxTrans);
+    icp.transformationCheckers.push_back(maxIter);
+    icp.transformationCheckers.push_back(diff);
 
-    icp_.inspector.swap(nullInspect);
+    icp.inspector.swap(nullInspect);
 
-    icp_.transformations.push_back(rigidTrans);
+    icp.transformations.push_back(rigidTrans);
 }
 
 template<typename PointType>
-float ICPSLAMCalculator<PointType>::calculateError_(const DP& referenceCloud, const DP& readingCloud,
+float ICPSLAMCalculator<PointType>::calculateError(const DP& referenceCloud, const DP& readingCloud,
                                                     const Eigen::MatrixXf& transform)
 {
     DP data_out(readingCloud);
-    icp_.transformations.apply(data_out, transform);
+    icp.transformations.apply(data_out, transform);
 
     PM::DataPointsFilters f;
 
@@ -222,47 +228,30 @@ float ICPSLAMCalculator<PointType>::calculateError_(const DP& referenceCloud, co
     f.push_back(normal_orient);
     f.apply(referenceWithNormals);
 
-    icp_.matcher->init(referenceWithNormals);
+    icp.matcher->init(referenceWithNormals);
     // 2) Get matches between transformed data and ref
-    PM::Matches matches = icp_.matcher->findClosests(data_out);
+    PM::Matches matches = icp.matcher->findClosests(data_out);
     // 3) Get outlier weights for the matches
-    PM::OutlierWeights outlierWeights = icp_.outlierFilters.compute(data_out, referenceWithNormals, matches);
+    PM::OutlierWeights outlierWeights = icp.outlierFilters.compute(data_out, referenceWithNormals, matches);
     // 4) Compute error
-    return icp_.errorMinimizer->getResidualError(data_out, referenceWithNormals, outlierWeights, matches);
+    return icp.errorMinimizer->getResidualError(data_out, referenceWithNormals, outlierWeights, matches);
 }
 
 template<typename PointType>
 inline void
-ICPSLAMCalculator<PointType>::convertToDataPointsAndApplyDefaultRotation_(
+ICPSLAMCalculator<PointType>::convertToDataPoints(
     typename pcl::PointCloud<PointType>::ConstPtr input, DP& out)
 {
-    Eigen::Affine3f transform = Eigen::Affine3f::Identity();
-    transform.rotate(Eigen::AngleAxisf(this->angle, Eigen::Vector3f::UnitZ()));
-
     Eigen::MatrixXf points = Eigen::MatrixXf::Zero(3, input->points.size());
     for (int i = 0; i < input->points.size(); ++i)
     {
         Eigen::Vector3f pt = input->points[i].getVector3fMap();
-        points.block<3, 1>(0, i) = transform * pt;
+        points.block<3, 1>(0, i) = pt;
     }
     out = DP();
     out.addFeature("x", points.row(0));
     out.addFeature("y", points.row(1));
     out.addFeature("z", points.row(2));
-}
-
-template<typename PointType>
-inline TransformData ICPSLAMCalculator<PointType>::convertToTransformData_(const Eigen::Matrix4f& transformationMatrix)
-{
-    double rotX, rotY, rotZ;
-    rotX = atan2(transformationMatrix(2, 1), transformationMatrix(2, 2));
-    rotY = atan2(-transformationMatrix(2, 0), std::pow(transformationMatrix(2, 1) * transformationMatrix(2, 1) +
-                                                       transformationMatrix(2, 2) * transformationMatrix(2, 2),
-                                                       0.5));
-    rotZ = atan2(transformationMatrix(1, 0), transformationMatrix(0, 0));
-    return TransformData(-transformationMatrix(0, 3), -transformationMatrix(1, 3), -transformationMatrix(2, 3),
-                         -rotZ, 70);
-
 }
 
 } // compute

@@ -23,6 +23,7 @@
 
 #include "helpers/GPSHelper.h"
 #include "helpers/FileHelper.h"
+#include "helpers/ViewerHelper.h"
 
 #include "piping/ProcessorPipe.hpp"
 
@@ -32,6 +33,8 @@
 #include "compute/Producer.hpp"
 #include "compute/Transformer.hpp"
 #include "compute/calculators/GPSCalculator.hpp"
+#include "compute/calculators/ICPSLAMCalculator.hpp"
+#include "compute/calculators/LOAMSLAMCalculator.hpp"
 
 using namespace olp;
 using namespace olp::helper;
@@ -54,7 +57,7 @@ compute::GPSCalculator<pcl::PointXYZI>* createGPSCalculator(const std::string& c
         std::vector<gps::GPS>::const_iterator last = gpsDataWithKalmanFilter.end();
         filteredGpsData = std::vector<gps::GPS>(first, last);
 
-        if(filteredGpsData.size() > 1){
+        if(filteredGpsData.size() >= 3) {
             helper::TransformData act = TransformData();
             startData = gps::calculateTransformData(filteredGpsData[0], filteredGpsData[2], act);
         }
@@ -65,7 +68,7 @@ compute::GPSCalculator<pcl::PointXYZI>* createGPSCalculator(const std::string& c
 }
 
 
-int main( int argc, char *argv[] )
+int main(int argc, char *argv[])
 {
     // Command-Line argument parsing
     if (pcl::console::find_switch(argc, argv, "--help") ||
@@ -81,6 +84,7 @@ int main( int argc, char *argv[] )
                   << " [--mcsvfile <*.csv>]"
                   << " [--filter]"
                   << " [--wftype] <pcd> | <las>"
+                  << " [--slamtype] <none> | <icp> | <loam>"
                   << " [--cloudStep <1>]"
                   << " [--help]"
                   << std::endl;
@@ -94,8 +98,9 @@ int main( int argc, char *argv[] )
     std::string mobileCSV;
     std::string pcd_dir;
     std::string writeFileType = "las";
-    int start_time;
+    std::string slamType = "none";
     int processEveryXCloud = -1;
+    int start_time;
 
     pcl::console::parse_argument(argc, argv, "--ip", ipaddress);
     pcl::console::parse_argument(argc, argv, "--port", port);
@@ -104,8 +109,9 @@ int main( int argc, char *argv[] )
     pcl::console::parse_argument(argc, argv, "--mcsvfile", mobileCSV);
     pcl::console::parse_argument(argc, argv, "--dir", pcd_dir);
     pcl::console::parse_argument(argc, argv, "--wftype", writeFileType);
+    pcl::console::parse_argument(argc, argv, "--slamtype", slamType);
+    pcl::console::parse_argument(argc, argv, "--cloudStep", processEveryXCloud);
     pcl::console::parse_argument(argc, argv, "--stime", start_time);
-    pcl::console::parse(argc, argv, "--cloudStep", processEveryXCloud);
 
     bool filter = pcl::console::find_switch(argc, argv, "--filter");
 
@@ -153,23 +159,40 @@ int main( int argc, char *argv[] )
         compute::Processor<pcl::PointXYZI>* filter = new compute::OrigoFilter<pcl::PointXYZI>();
         processorPipe.add(filter);
         //compute::Processor<pcl::PointXYZI>* axisfilter = new compute::AxisFilter<pcl::PointXYZI>();
-       // processorPipe.add(axisfilter);
+        //processorPipe.add(axisfilter);
 
     }
 
     std::vector<compute::Calculator<pcl::PointXYZI>*> calculators;
+    std::shared_ptr<ViewerShareData<pcl::PointXYZI>> shareData = std::make_shared<ViewerShareData<pcl::PointXYZI>>();
 
     uint64_t time = !pcap.empty() ? start_time : std::time(0);
-    if(!csv.empty()){
+    if (!csv.empty()) {
         calculators.push_back(createGPSCalculator(csv, time, gps::GPSSource::stonex, "kalman_filter_test.csv"));
+        shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
     }
 
-    if(!mobileCSV.empty()){
+    if (!mobileCSV.empty()) {
         calculators.push_back(createGPSCalculator(mobileCSV, time, gps::GPSSource::mobile, "kalman_filter_test_mobile.csv"));
+        shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
     }
 
-    if(calculators.size() > 0) {
-        compute::CloudTransformer<pcl::PointXYZI>* cloudTransformer = new compute::CloudTransformer<pcl::PointXYZI>(calculators, calculators[0]->startData);
+    TransformData startData;
+    if (!pcap.empty() && calculators.size() != 0)
+        startData = calculators[0]->startData;
+
+    if (slamType == "icp") {
+        calculators.push_back(new compute::ICPSLAMCalculator<pcl::PointXYZI>(startData, processEveryXCloud < 1 ? 1 : processEveryXCloud));
+        shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
+    }
+    else if(slamType == "loam") {
+        calculators.push_back(new compute::LOAMSLAMCalculator<pcl::PointXYZI>(startData));
+        shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
+    }
+
+    if (calculators.size() > 0) {
+        compute::CloudTransformer<pcl::PointXYZI>* cloudTransformer = new compute::CloudTransformer<pcl::PointXYZI>(
+            calculators, calculators[0]->startData, shareData);
         processorPipe.add(cloudTransformer);
     }
 
@@ -177,6 +200,10 @@ int main( int argc, char *argv[] )
     processorPipe.add(mergeProcessor);
 
     compute::ViewConsumer<pcl::PointXYZI> consumer(viewer);
+
+    if (calculators.size() > 0){
+        consumer.addShareData(shareData);
+    }
 
     int i = 0;
     grabberProducer.registerHandler(
@@ -186,7 +213,7 @@ int main( int argc, char *argv[] )
             consumer.show(result);
 
             i++;
-            if(i % 100 == 0)
+            if (i % 100 == 0)
             {
                 compute::FileWriter<pcl::PointXYZI> fileWriter(pcap, writeFileType, time);
                 fileWriter.show(result);

@@ -31,7 +31,7 @@ public:
     void updateFilter(double lat, double lon, bool needEstimate = true, double secondSinceLastTimeStep = 1);
     void setObservationMatrix(double T = 1);
 
-    points getNewCoord();
+    Point getNewCoord();
 
     ~KalmanHelper();
 

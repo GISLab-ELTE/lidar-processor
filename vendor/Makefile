@@ -4,8 +4,7 @@ MKDIR = mkdir -p
 RMDIR = rm -rf
 
 .PHONY: all
-all: LASlib
-#all: LASlib libpointmatcher
+all: LASlib libpointmatcher
 
 .ONESHELL:
 .PHONY: LASlib

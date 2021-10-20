@@ -37,7 +37,7 @@ public:
                   gps::GPSCoordType coordType = gps::GPSCoordType::latlong)
         : Calculator<PointType>(data)
     {
-        gspCloudMap.clear();
+        gpsCloudMap.clear();
         startTime = time;
         gpsData = gps;
         type = coordType;
@@ -47,9 +47,13 @@ public:
     TransformData calculate(typename pcl::PointCloud<PointType>::ConstPtr input) override
     {
         TransformData data = matchWithGPS(input, type);
-        this->startData.angle += data.angle;
-        this->startData.angleOfElevation += data.angleOfElevation;
+        this->startData.transform = this->startData.transform * data.transform;
         return data;
+    }
+
+    const std::string stringId() const override
+    {
+        return gps::GpsStringIds.at(gpsSource);
     }
 
 protected:
@@ -57,7 +61,7 @@ protected:
 
     std::vector<gps::GPS> gpsData;
     uint64_t startTime;
-    std::vector<gps::GPS> gspCloudMap;
+    std::vector<gps::GPS> gpsCloudMap;
     gps::GPSCoordType type;
     gps::GPSSource gpsSource;
     TransformData actData;
@@ -96,16 +100,16 @@ TransformData GPSCalculator<PointType>::matchWithGPS(typename pcl::PointCloud<Po
             index = diff1 <= diff2 ? i : i - 1;
         }
 
-        if (gspCloudMap.size() > 0)
+        if (gpsCloudMap.size() > 0)
         {
-            data = calculateTransformData(gspCloudMap[gspCloudMap.size() - 1], gpsData[index], this->startData,
+            data = calculateTransformData(gpsCloudMap[gpsCloudMap.size() - 1], gpsData[index], this->startData,
                                           coordType);
             data.percentage = gpsData[index].accuracy;
-            if( gpsData[index].secondsSinceReference  > timestamp)
-                data.percentage -= 10;
+            int timeDiff = (gpsData[index].secondsSinceReference - timestamp);
+            data.percentage -= 10 * (timeDiff < 0 ? -timeDiff : timeDiff);
         }
 
-        gspCloudMap.push_back(gpsData[index]);
+        gpsCloudMap.push_back(gpsData[index]);
 
 
         std::cerr << "source:" << (gpsSource == gps::GPSSource::stonex ? "Stonex" : "Mobile") << std::endl;
@@ -115,8 +119,6 @@ TransformData GPSCalculator<PointType>::matchWithGPS(typename pcl::PointCloud<Po
         std::cerr << "cloud_timestamp:" << timestamp << std::endl;
         std::cerr << "accuracy:" << data.percentage << std::endl;
         std::cerr << "---------------" << std::endl;
-
-
     }
 
     return data;

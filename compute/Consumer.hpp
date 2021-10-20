@@ -24,6 +24,7 @@
 
 #include "../helpers/LASHelper.h"
 #include "../helpers/FileHelper.h"
+#include "../helpers/Utility.h"
 
 #include "Processor.h"
 #include "../viewer.hpp"
@@ -37,6 +38,7 @@ class Consumer
 {
 public:
     virtual void show(typename pcl::PointCloud<PointType>::Ptr input) = 0;
+    virtual void addShareData(std::shared_ptr<olp::helper::ViewerShareData<PointType>> shareData) = 0;
 };
 
 template<typename PointType>
@@ -48,6 +50,11 @@ public:
     void show(typename pcl::PointCloud<PointType>::Ptr input) override
     {
         viewer.update(input);
+    }
+
+    void addShareData(std::shared_ptr<olp::helper::ViewerShareData<PointType>> shareData) override
+    {
+        viewer.addShareData(shareData);
     }
 
 private:
@@ -68,6 +75,11 @@ public:
     void show(typename pcl::PointCloud<PointType>::Ptr input) override
     {
         writeFile(input);
+    }
+
+    void addShareData(std::shared_ptr<olp::helper::ViewerShareData<PointType>> shareData) override
+    {
+        throw std::logic_error("Function not implemented");
     }
 
 protected:

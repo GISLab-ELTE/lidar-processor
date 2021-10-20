@@ -18,6 +18,7 @@
 #include <pcl/common/transforms.h>
 #include <pcl/kdtree/kdtree_flann.h>
 
+#include "../../helpers/ViewerHelper.h"
 #include "Calculator.h"
 
 namespace olp
@@ -28,12 +29,17 @@ template<typename PointType>
 class LOAMSLAMCalculator : public Calculator<PointType>
 {
 public:
-    LOAMSLAMCalculator(double angle) : Calculator<PointType>(angle), BEAMCOUNT_(16), _barrier(BEAMCOUNT_ + 1)
+    LOAMSLAMCalculator(TransformData data) : Calculator<PointType>(data), BEAMCOUNT_(16), _barrier(BEAMCOUNT_ + 1)
     {
         _previousCloud = pcl::PointCloud<PointType>().makeShared();
     }
 
     TransformData calculate(typename pcl::PointCloud<PointType>::ConstPtr input) override;
+
+    const std::string stringId() const override
+    {
+        return "LOAM";
+    }
 
 protected:
     unsigned const BEAMCOUNT_;
@@ -85,7 +91,10 @@ TransformData LOAMSLAMCalculator<PointType>::calculate(typename pcl::PointCloud<
     {
         Eigen::Vector3d rotation, translation;
         _findCorrespondances(_previousCloud, correctedIn, planarPoints, edgePoints, rotation, translation, 25);
-        return TransformData(translation[0], translation[1], translation[2], rotation[2], 70);
+        TransformData result = TransformData(70);
+        result.transform *= Eigen::AngleAxisd(rotation(2), Eigen::Vector3d::UnitZ());
+        result.transform.translation() = translation;
+        return result;
     }
     pcl::copyPointCloud(*input, *_previousCloud);
     return TransformData();

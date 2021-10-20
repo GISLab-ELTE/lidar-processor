@@ -57,9 +57,9 @@ include_directories(${LASlib_INCLUDE_DIRS})
 link_directories(${LASlib_LIBRARY_DIRS})
 
 # libpointmatcher
-#find_package(libnabo REQUIRED PATHS vendor/libnabo/install)
-#find_package(libpointmatcher REQUIRED PATHS vendor/libpointmatcher/install)
-#include_directories(${libpointmatcher_INCLUDE_DIRS})
+find_package(libnabo REQUIRED PATHS vendor/libnabo/install)
+find_package(libpointmatcher REQUIRED PATHS vendor/libpointmatcher/install)
+include_directories(${libpointmatcher_INCLUDE_DIRS})
 
 # ikalman
 include_directories(vendor/ikalman)
@@ -84,6 +84,7 @@ add_executable(olp
     helpers/TinyEKFHelper.cpp helpers/TinyEKFHelper.h
     helpers/CsvFileWriter.h
     helpers/Utility.h
+    helpers/ViewHelper.h
     piping/ProcessorPipe.hpp
     compute/Processor.h
     compute/Producer.hpp
@@ -92,15 +93,15 @@ add_executable(olp
     compute/Transformer.hpp
     compute/calculators/Calculator.h
     compute/calculators/GPSCalculator.hpp
-    #compute/calculators/ICPSLAMCalculator.hpp
-    #compute/calculators/LOAMSLAMCalculator.hpp
+    compute/calculators/ICPSLAMCalculator.hpp
+    compute/calculators/LOAMSLAMCalculator.hpp
 )
 
 target_link_libraries(olp
     ${LASlib_LIBRARIES}
     ${Boost_LIBRARIES}
     ${PCL_LIBRARIES}
-    #${libpointmatcher_LIBRARIES}
-    #${libnabo_LIBRARIES}
+    ${libpointmatcher_LIBRARIES}
+    ${libnabo_LIBRARIES}
     ikalman
     tinyekf)

@@ -1,6 +1,6 @@
 /*
  * BSD 3-Clause License
- * Copyright (c) 2020, Roxána Provender
+ * Copyright (c) 2020-2021, Roxána Provender, Péter Farkas
  * All rights reserved.
  *
  * You may obtain a copy of the License at
@@ -12,27 +12,48 @@
 
 #include <cstdint>
 
+#include <Eigen/Geometry>
+
 namespace olp
 {
 namespace helper
 {
 struct TransformData
 {
-    double x;
-    double y;
-    double z;
-    double angle;
-    double angleOfElevation;
+    Eigen::Affine3d transform;
     double percentage;
 
-    TransformData(double x = 0, double y = 0, double z = 0, double angle = 0, double percentage = 0, double angleOfElevation = 0)
-        : x(x), y(y), z(z), angle(angle), percentage(percentage), angleOfElevation(angleOfElevation) {}
+    explicit TransformData(double percentage = 0) :
+        transform(Eigen::Affine3d::Identity()), percentage(percentage) {}
+
+    TransformData(const Eigen::Affine3d& transform, double percentage = 0)
+        : transform(transform), percentage(percentage) {}
+
+    TransformData(const Eigen::Matrix4d& transform, double percentage = 0)
+        : transform(transform), percentage(percentage) {}
 };
 
 inline uint32_t calculatePointCloudTimeStamp(uint64_t stamp)
 {
     return ((stamp & 0x00000000ffffffffl) / 1000000);
 }
+
+inline double getRotX(const Eigen::Affine3d& matrix)
+{
+    return atan2(matrix(2, 1), matrix(2, 2));
+}
+
+inline double getRotY(const Eigen::Affine3d& matrix)
+{
+    return atan2(-matrix(2, 0), std::pow(matrix(2, 1) * matrix(2, 1) +
+                                         matrix(2, 2) * matrix(2, 2), 0.5));
+}
+
+inline double getRotZ(const Eigen::Affine3d& matrix)
+{
+    return atan2(matrix(1, 0), matrix(0, 0));
+}
+
 } // helper
 } // olp
 

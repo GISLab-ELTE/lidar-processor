@@ -19,7 +19,6 @@
 #include <TinyEKF.h>
 #include "GPSHelper.h"
 
-
 namespace olp
 {
 namespace helper
@@ -34,7 +33,7 @@ public:
 
     TinyEKFHelper();
     void update(gps::GPS currentgps, gps:: GPS previousGPS);
-    points getNewCoord();
+    Point getNewCoord();
     void setRMatrix(double R0 = 29);
 protected:
     std::vector<double> pseudorange;

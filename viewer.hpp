@@ -1,6 +1,6 @@
 /*
  * BSD 3-Clause License
- * Copyright (c) 2019-2020, Máté Cserép
+ * Copyright (c) 2019-2021, Máté Cserép & Péter Farkas
  * All rights reserved.
  *
  * You may obtain a copy of the License at
@@ -18,6 +18,8 @@
 #include <pcl/io/vlp_grabber.h>
 #include <pcl/visualization/pcl_visualizer.h>
 
+#include "helpers/ViewerHelper.h"
+
 namespace olp
 {
 /**
@@ -31,12 +33,21 @@ public:
     Viewer(
         pcl::visualization::PointCloudColorHandler<PointType>& handler)
         : _viewer(new pcl::visualization::PCLVisualizer("Online LiDAR Viewer")),
-          _handler(handler)
+          _handler(handler),
+          _prevTrajectoryPoint(PointType())
     {
         _viewer->addCoordinateSystem(3.0);
         _viewer->setBackgroundColor(0.0, 0.0, 0.0);
         _viewer->initCameraParameters();
         _viewer->setCameraPosition(0.0, 0.0, 30.0, 0.0, 1.0, 0.0, 0);
+    }
+
+    /**
+     * Add data shared with cloud transformer
+     */
+    void addShareData(std::shared_ptr<olp::helper::ViewerShareData<PointType>> shareData)
+    {
+        _shareData = shareData;
     }
 
     /**
@@ -57,6 +68,8 @@ private:
     typename pcl::PointCloud<PointType>::ConstPtr _cloud;
     std::mutex _mutex;
     bool _hasUpdate = false;
+    std::shared_ptr<olp::helper::ViewerShareData<PointType>> _shareData;
+    PointType _prevTrajectoryPoint;
 };
 
 template<typename PointType>
@@ -70,6 +83,7 @@ void Viewer<PointType>::update(typename pcl::PointCloud<PointType>::ConstPtr clo
 template<typename PointType>
 void Viewer<PointType>::run()
 {
+    uint64_t segmentId = 0;
     while (!_viewer->wasStopped())
     {
         // Update viewer
@@ -83,6 +97,35 @@ void Viewer<PointType>::run()
                 _viewer->addPointCloud(_cloud, _handler,"cloud");
             _viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
             _hasUpdate = false;
+            // Add precision description and next point to trajectory line
+            if(_shareData){
+                const int yOffset = 20;
+                int i = 0;
+                for(auto it = _shareData->precisionMap.begin(); it != _shareData->precisionMap.end(); ++it)
+                {
+                    std::string line = it->first + ": " + std::to_string(it->second);
+                    if(!_viewer->updateText(line, 0, (20 + i * yOffset), it->first))
+                    {
+                        olp::helper::Color color = olp::helper::getCalculatorColor(it->first);
+                        _viewer->addText(line, 0, (20 + i * yOffset), color.r, color.g, color.b, it->first);
+                    }
+                    ++i;
+                }
+                while(!_shareData->trajectoryQueue.empty()){
+                    auto current = _shareData->trajectoryQueue.front();
+                    // Add next trajectory line
+                    olp::helper::Color bestColor = olp::helper::getCalculatorColor(current.second);
+                    std::string lineStringId = "line" + std::to_string(segmentId);
+                    _viewer->addLine(current.first, _prevTrajectoryPoint,
+                                    bestColor.r, bestColor.g, bestColor.b,
+                                    lineStringId);
+                    _viewer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_LINE_WIDTH, 3, lineStringId);
+                    _viewer->addSphere(current.first, 0.2, bestColor.r, bestColor.g, bestColor.b, "sphere" + std::to_string(segmentId));
+                    _prevTrajectoryPoint = current.first;
+                    ++segmentId;
+                    _shareData->trajectoryQueue.pop();
+                }
+            }
         }
     }
 }

@@ -11,6 +11,7 @@
 #include <cmath>
 
 #include <boost/lexical_cast.hpp>
+#include "Eigen/Geometry"
 
 #include "GPSHelper.h"
 #include "KalmanHelper.h"
@@ -127,8 +128,8 @@ int getStartIndex(std::vector<GPS> gpsData, uint64_t time)
             j++;
         else
         {
-            found = calculateDistance(points(gpsData[j].latitude, gpsData[j].longitude),
-                                      points(gpsData[j + 1].latitude, gpsData[j + 1].longitude)) > 0.09;
+            found = calculateDistance(Point(gpsData[j].latitude, gpsData[j].longitude),
+                                      Point(gpsData[j + 1].latitude, gpsData[j + 1].longitude)) > 0.09;
             j++;
         }
     }
@@ -145,11 +146,13 @@ std::vector<GPS> kalmanFilter(std::vector<GPS>& gpsData, int startIndex, GPSSour
 
     TinyEKFHelper f = TinyEKFHelper();
 
-    points newCoord;
+    Point newCoord;
     GPS data = GPS();
     int secondsSinceRefrence = gpsData[startIndex].secondsSinceReference;
     int i = startIndex;
-    bool isFirst = true;
+    double prevAzimuth = 0, currentAzimuth, deltaAzimuth;
+    GPS prevData = gpsData[startIndex];
+    bool hasMatch;
 
     while (i < gpsData.size())
     {
@@ -164,18 +167,19 @@ std::vector<GPS> kalmanFilter(std::vector<GPS>& gpsData, int startIndex, GPSSour
             //else
                // f.setRMatrix(1000);
 
-            isFirst = true;
             if(i == startIndex)
                 f.update(gpsData[i], gpsData[i]);
             else
                 f.update(gpsData[i], newData[newData.size() - 1]);
             data.accuracy = gpsData[i].accuracy;
             i++;
+            hasMatch = true;
         }
         else
         {
+            hasMatch = false;
             f.update(gpsData[i], newData[newData.size() - 1]);
-            data.accuracy = newData[newData.size() - 1].accuracy - 1;
+            //data.accuracy = newData[newData.size() - 1].accuracy - 1;
         }
 
         newCoord = f.getNewCoord();
@@ -183,6 +187,15 @@ std::vector<GPS> kalmanFilter(std::vector<GPS>& gpsData, int startIndex, GPSSour
         data.longitude = newCoord.y;
         data.elevation = newCoord.z;
 
+        currentAzimuth = calculateAzimuth({data.latitude, data.longitude, data.elevation},
+                                          {prevData.latitude, prevData.longitude, prevData.elevation});
+        deltaAzimuth = abs(prevAzimuth - currentAzimuth);
+        prevAzimuth = currentAzimuth;
+        // penalty for points created by the filter making sharp turns
+        if(!hasMatch)
+            data.accuracy -= deltaAzimuth * 180;
+
+        prevData = data;
         newData.push_back(data);
     }
 
@@ -233,15 +246,15 @@ void write(const std::string& fileName, const std::vector<GPS>& gpsData)
     }
 }
 
-points calculateDistanceFromEOV(const points& from, const points& to)
+Point calculateDistanceFromEOV(const Point& from, const Point& to)
 {
     double diffY = to.y - from.y;
     double diffX = to.x - from.x;
 
-    return points(diffY, diffX);
+    return Point(diffY, diffX);
 }
 
-double haversine(const points& from, const points& to)
+double haversine(const Point& from, const Point& to)
 {
     double dlong = (to.y - from.y) * DEG_TO_RAD;
     double dlat = (to.x - from.x) * DEG_TO_RAD;
@@ -251,7 +264,7 @@ double haversine(const points& from, const points& to)
     return c;
 }
 
-double calculateDistance(const points& from, const points& to)
+double calculateDistance(const Point& from, const Point& to)
 {
     return EARTH_RADIUS_IN_METERS * haversine(from, to);
 }
@@ -264,23 +277,24 @@ double calculateAngleOfElevation(double deltaXy, double deltaZ) {
 
 TransformData calculateTransformData(GPS& data1, GPS& data2, TransformData& actTransformation, GPSCoordType coordType)
 {
-
     double deltaX, deltaY, deltaZ, angle, angleOfElevation = 0;
+    double actAngle = getRotZ(actTransformation.transform);
+    double actAngleOfElevation = getRotX(actTransformation.transform);
     switch (coordType)
     {
         case latlong:
-            deltaY = calculateDistance(points(data1.latitude, data1.longitude),
-                                       points(data2.latitude, data1.longitude));
-            deltaX = calculateDistance(points(data1.latitude, data1.longitude),
-                                       points(data1.latitude, data2.longitude));
+            deltaY = calculateDistance(Point(data1.latitude, data1.longitude),
+                                       Point(data2.latitude, data1.longitude));
+            deltaX = calculateDistance(Point(data1.latitude, data1.longitude),
+                                       Point(data1.latitude, data2.longitude));
 
             if (data2.longitude < data1.longitude) deltaX *= -1;
             if (data2.latitude < data1.latitude) deltaY *= -1;
             break;
 
         case EOV:
-            points EOVdistance = calculateDistanceFromEOV(points(data1.localN, data1.localE),
-                                                          points(data2.localN, data2.localE));
+            Point EOVdistance = calculateDistanceFromEOV(Point(data1.localN, data1.localE),
+                                                         Point(data2.localN, data2.localE));
             deltaX = EOVdistance.x;
             deltaY = EOVdistance.y;
             break;
@@ -289,24 +303,29 @@ TransformData calculateTransformData(GPS& data1, GPS& data2, TransformData& actT
     if (deltaY != 0 || deltaX != 0)
     {
         angle = calculateAngle(deltaX, deltaY);
-        angle -= actTransformation.angle;
+        angle -= actAngle;
     }
 
     deltaZ = data2.elevation - data1.elevation;
 
     if(deltaZ != 0)
     {
-        double deltaXY = calculateDistance(points(data1.latitude, data1.longitude),
-                                           points(data2.latitude, data2.longitude));
+        double deltaXY = calculateDistance(Point(data1.latitude, data1.longitude),
+                                           Point(data2.latitude, data2.longitude));
 
         angleOfElevation = calculateAngleOfElevation(deltaXY, deltaZ);
-        angleOfElevation -= actTransformation.angleOfElevation;
+        angleOfElevation -= actAngleOfElevation;
     }
 
-    return TransformData(deltaX, deltaY, deltaZ, angle, 0, angleOfElevation);
+    TransformData result = TransformData();
+    result.transform = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitZ()) *
+                       Eigen::AngleAxisd(angleOfElevation, Eigen::Vector3d::UnitX());
+    result.transform.translation() << deltaX, deltaY, deltaZ;
+    result.transform.translation() = actTransformation.transform.rotation().inverse() * result.transform.translation();
+    return result;
 }
 
-double calculateAzimuth(const points& from, const points& to)
+double calculateAzimuth(const Point& from, const Point& to)
 {
 
     double fromXRad = from.x * DEG_TO_RAD;
@@ -320,7 +339,7 @@ double calculateAzimuth(const points& from, const points& to)
     return theta;
 }
 
-double calculateAngle(const points& from, const points& to)
+double calculateAngle(const Point& from, const Point& to)
 {
 
     double dot = from.x * to.x + from.y * to.y;

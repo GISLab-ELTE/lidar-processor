@@ -39,6 +39,11 @@ enum GPSCoordType
     EOV, latlong
 };
 
+const std::map<GPSSource, std::string> GpsStringIds = {
+    {stonex, "stonexGPS"},
+    {mobile, "mobileGPS"}
+};
+
 struct GPS
 {
     double latitude;
@@ -65,11 +70,11 @@ struct GPSStonex : GPS
 };
 
 
-struct points
+struct Point
 {
     double x, y, z;
 
-    points(double px = 0, double py = 0, double pz = 0) : x(px), y(py), z(pz) {}
+    Point(double px = 0, double py = 0, double pz = 0) : x(px), y(py), z(pz) {}
 };
 
 
@@ -77,7 +82,7 @@ std::vector<GPS> read(const std::string& fileName, GPSSource source = stonex);
 
 void write(const std::string& fileName, const std::vector<GPS>& gps_data);
 
-typedef std::vector<points> PointVector;
+typedef std::vector<Point> PointVector;
 typedef std::map<int, PointVector> MapPointVector;
 
 std::vector<GPS> kalmanFilter(std::vector<GPS>& gpsData, int startIndex, GPSSource source);
@@ -86,15 +91,15 @@ int getStartIndex(std::vector<GPS> gpsData, uint64_t time);
 
 TransformData calculateTransformData(GPS& data1, GPS& data2, TransformData& actTransformation, GPSCoordType coordType = GPSCoordType::latlong);
 
-double calculateDistance(const points& from, const points& to);
+double calculateDistance(const Point& from, const Point& to);
 
-points calculateDistanceFromEOV(const points& from, const points& to);
+Point calculateDistanceFromEOV(const Point& from, const Point& to);
 
 double calculateAngle(double dx, double dy);
 
-double calculateAngle(const points& from, const points& to);
+double calculateAngle(const Point& from, const Point& to);
 
-double calculateAzimuth(const points& from, const points& to);
+double calculateAzimuth(const Point& from, const Point& to);
 
 void displayDistances(const MapPointVector& mp, int v1, int v2);
 } // gps

@@ -13,6 +13,7 @@
 #include <pcl/point_cloud.h>
 
 #include "../../helpers/Utility.h"
+#include "../../helpers/ViewerHelper.h"
 
 namespace olp
 {
@@ -30,6 +31,8 @@ public:
 
     virtual helper::TransformData calculate(
         typename pcl::PointCloud<PointType>::ConstPtr input) = 0;
+
+    virtual const std::string stringId() const = 0;
 };
 
 } // compute

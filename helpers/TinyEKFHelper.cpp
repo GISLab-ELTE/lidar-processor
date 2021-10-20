@@ -94,13 +94,13 @@ void TinyEKFHelper::update(gps::GPS currentgps, gps:: GPS previousGPS) {
 
 }
 
-points TinyEKFHelper::getNewCoord() {
+Point TinyEKFHelper::getNewCoord() {
     std::cerr << "--------------" << std::endl;
     for(int i = 0; i < 6; i++) {
         std::cerr << i << ": " << getX(i) << std::endl;
     }
 
-    return points(getX(0), getX(2), getX(4));
+    return Point(getX(0), getX(2), getX(4));
 
 
 }

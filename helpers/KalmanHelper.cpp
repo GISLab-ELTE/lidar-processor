@@ -68,7 +68,7 @@ void KalmanHelper::updateFilter(double lat, double lon, bool needEstimate, doubl
     }
 }
 
-points KalmanHelper::getNewCoord()
+Point KalmanHelper::getNewCoord()
 {
     double lat;
     double lon;
@@ -91,7 +91,7 @@ points KalmanHelper::getNewCoord()
     }
 
     std::cerr << std::endl << "---------------------" << std::endl;
-    return points(lat, lon);
+    return Point(lat, lon);
 }
 
 void KalmanHelper::setStateTransition(double T, double r)

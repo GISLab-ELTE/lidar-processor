@@ -17,6 +17,7 @@
 #include <pcl/filters/extract_indices.h>
 
 #include "../helpers/GPSHelper.h"
+#include "../helpers/ViewerHelper.h"
 
 #include "Processor.h"
 #include "calculators/Calculator.h"
@@ -31,17 +32,15 @@ class CloudTransformer : public Processor<PointType>
 {
 public:
 
-    CloudTransformer(std::vector<Calculator<PointType>*>& calculators, TransformData startData)
-        : calculators(calculators), Processor<PointType>()
-    {
-        data.angle = startData.angle;
-        data.angleOfElevation = startData.angleOfElevation;
-    }
+    CloudTransformer(std::vector<Calculator<PointType>*>& calculators, TransformData startData, std::shared_ptr<ViewerShareData<PointType>> shareData)
+        : calculators(calculators), shareData(shareData), Processor<PointType>(), data(startData) {}
 
 protected:
     std::vector<Calculator<PointType>*> calculators;
 
-    TransformData data = TransformData();
+    std::shared_ptr<ViewerShareData<PointType>> shareData;
+
+    TransformData data;
 
     typename pcl::PointCloud<PointType>::Ptr process(
         typename pcl::PointCloud<PointType>::ConstPtr input) override;
@@ -54,35 +53,36 @@ template<typename PointType>
 typename pcl::PointCloud<PointType>::Ptr CloudTransformer<PointType>::process(
     typename pcl::PointCloud<PointType>::ConstPtr input)
 {
-    TransformData* bestData = new TransformData();
-    TransformData* actData = new TransformData();
+    TransformData bestData;
+    TransformData actData;
     int bestId = 0;
     for (auto i = 0; i < calculators.size(); ++i)
     {
-        *actData = calculators.at(i)->calculate(input);
+        // sync back current transformation to calculators - required by the gps calculators
+        calculators.at(i)->startData = data;
 
-        if (actData->percentage > bestData->percentage)
+        actData = calculators.at(i)->calculate(input);
+
+        shareData->precisionMap.at(calculators.at(i)->stringId()) = actData.percentage;
+
+        if (actData.percentage > bestData.percentage)
         {
-            *bestData = *actData;
+            bestData = actData;
             bestId = i;
+            shareData->tempId = calculators.at(i)->stringId();
         }
     }
 
-    data.x += bestData->x;
-    data.y += bestData->y;
-    data.z += bestData->z;
-    data.angle += bestData->angle;
-    data.angleOfElevation += bestData->angleOfElevation;
-
-
-    std::cerr << "distance x:" << data.x << std::endl;
-    std::cerr << "distance y:" << data.y << std::endl;
-    std::cerr << "distance z:" << data.z << std::endl;
-    std::cerr << "accuracy:" << bestData->percentage << std::endl;
-    std::cerr << "angle:" << data.angle * 180 / M_PI << std::endl;
-    std::cerr << "delta angle:" << bestData->angle * 180 / M_PI << std::endl;
-    std::cerr << "angle of elevation:" << data.angleOfElevation * 180 / M_PI << std::endl;
-    std::cerr << "delta angle of elevation:" << bestData->angleOfElevation * 180 / M_PI << std::endl;
+    data.transform = data.transform * bestData.transform;
+    
+    std::cerr << "distance x:" << data.transform.translation()(0) << std::endl;
+    std::cerr << "distance y:" << data.transform.translation()(1) << std::endl;
+    std::cerr << "distance z:" << data.transform.translation()(2) << std::endl;
+    std::cerr << "accuracy:" << bestData.percentage << std::endl;
+    std::cerr << "angle:" << getRotZ(data.transform) * 180 / M_PI << std::endl;
+    std::cerr << "delta angle:" << getRotZ(bestData.transform) * 180 / M_PI << std::endl;
+    std::cerr << "angle of elevation:" << getRotX(data.transform) * 180 / M_PI << std::endl;
+    std::cerr << "delta angle of elevation:" << getRotX(bestData.transform) * 180 / M_PI << std::endl;
     std::cerr << "best calculator id:" << bestId << std::endl;
     std::cerr << "---------------" << std::endl;
 
@@ -93,41 +93,24 @@ template<typename PointType>
 typename pcl::PointCloud<PointType>::Ptr CloudTransformer<PointType>::transformCloud
     (typename pcl::PointCloud<PointType>::ConstPtr input, TransformData& data)
 {
-
-    Eigen::Matrix4f rotationZ = Eigen::Matrix4f::Identity();
-    Eigen::Matrix4f rotationX = Eigen::Matrix4f::Identity();
-    Eigen::Matrix4f translation = Eigen::Matrix4f::Identity();
-    Eigen::Matrix4f matrix = Eigen::Matrix4f::Identity();
-
-
-    Eigen::Affine3f transform = Eigen::Affine3f::Identity();
-    Eigen::Affine3f transform2 = Eigen::Affine3f::Identity();
-
-
     typename pcl::PointCloud<PointType>::Ptr transformedCloud(new pcl::PointCloud<PointType>());
 
-    transform.rotate(Eigen::AngleAxisf(data.angle, Eigen::Vector3f::UnitZ()));
-    transform2.rotate(Eigen::AngleAxisf(data.angleOfElevation, Eigen::Vector3f::UnitX()));
-    transform.translation() << data.x, data.y, data.z;
+    pcl::transformPointCloud(*input, *transformedCloud, data.transform);
 
-    rotationZ.block<3,3>(0,0) = transform.rotation();
-    rotationX.block<3,3>(0,0) = transform2.rotation();
-    translation.block<3,1>(0,3) = transform.translation();
-
-    matrix =  translation  * rotationX  * rotationZ ;
-
-    pcl::transformPointCloud(*input, *transformedCloud, matrix);
-
+    //create next trajectory point
+    shareData->tempPoint.x = data.transform(0, 3);
+    shareData->tempPoint.y = data.transform(1, 3);
+    shareData->tempPoint.z = data.transform(2, 3);
 
     std::cerr << "data :" << std::endl;
     for(int i = 0; i < 4; i++) {
         for(int j = 0; j < 4; j++) {
-            std::cerr << matrix(i,j) << " ";
+            std::cerr << data.transform(i,j) << " ";
         }
         std::cerr << std::endl;
     }
 
-
+    shareData->finalizeTemp();
     return transformedCloud;
 }
 
