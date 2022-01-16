@@ -35,6 +35,6 @@ libnabo:
 
 .PHONY: clean
 clean:
-	$(RMDIR) LAStools/LAStools LAStools/install
+	$(RMDIR) LAStools/build LAStools/install
 	$(RMDIR) libnabo/build libnabo/install
 	$(RMDIR) libpointmatcher/build libpointmatcher/install
