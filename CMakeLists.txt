@@ -114,3 +114,6 @@ target_link_libraries(olp
     ${libnabo_LIBRARIES}
     ikalman
     tinyekf)
+
+install(TARGETS olp
+    DESTINATION ${CMAKE_INSTALL_PREFIX})
