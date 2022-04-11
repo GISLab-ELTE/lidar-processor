@@ -1,6 +1,7 @@
 [submodule "vendor/LAStools"]
 	path = vendor/LAStools
 	url = https://github.com/LAStools/LAStools.git
+	ignore = dirty
 [submodule "vendor/ikalman"]
 	path = vendor/ikalman
 	url = https://github.com/neonbjb/ikalman.git
