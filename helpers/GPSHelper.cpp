@@ -118,6 +118,21 @@ GPS create(std::vector<std::string>& data)
     return gpsData;
 }
 
+
+GPS createPcap(std::vector<std::string>& data)
+{
+    GPS gpsData;
+
+    gpsData.latitude = convert(data[0]);
+    gpsData.longitude = convert(data[1]);
+    gpsData.elevation = convert(data[2]);
+    gpsData.accuracy = convert(data[3]);
+    gpsData.secondsSinceReference = std::stoi(data[4]);
+
+    return gpsData;
+}
+
+
 int getStartIndex(std::vector<GPS> gpsData, uint64_t time)
 {
     int j = 0;
@@ -137,11 +152,11 @@ int getStartIndex(std::vector<GPS> gpsData, uint64_t time)
     return j;
 }
 
-std::vector<GPS> kalmanFilter(std::vector<GPS>& gpsData, int startIndex, GPSSource source)
+std::vector<GPS> kalmanFilter(const std::vector<GPS>& gpsData, int startIndex)
 {
     std::vector<GPS> newData;
 
-    if (gpsData.size() == 0)
+    if (gpsData.empty ())
         return newData;
 
     TinyEKFHelper f = TinyEKFHelper();
@@ -162,10 +177,7 @@ std::vector<GPS> kalmanFilter(std::vector<GPS>& gpsData, int startIndex, GPSSour
         data.secondsSinceReference = secondsSinceRefrence;
         if (secondsSinceRefrence == gpsData[i].secondsSinceReference)
         {
-            //if(source == GPSSource::mobile)
-                f.setRMatrix((1000 - gpsData[i].accuracy) * 10);
-            //else
-               // f.setRMatrix(1000);
+            f.setRMatrix((1000 - gpsData[i].accuracy) * 10);
 
             if(i == startIndex)
                 f.update(gpsData[i], gpsData[i]);
@@ -229,6 +241,9 @@ std::vector<GPS> read(const std::string& fileName, GPSSource source)
                 case stonex:
                     gpsData.push_back(createStonex(vec));
                     break;
+                case pcap:
+                    gpsData.push_back(createPcap(vec));
+                    break;
             }
         }
         file.close();
@@ -275,7 +290,7 @@ double calculateAngleOfElevation(double deltaXy, double deltaZ) {
     double d3 = asin(deltaZ/deltaXy);
 }
 
-TransformData calculateTransformData(GPS& data1, GPS& data2, TransformData& actTransformation, GPSCoordType coordType)
+TransformData calculateTransformData(const GPS& data1, const GPS& data2, const TransformData& actTransformation, GPSCoordType coordType)
 {
     double deltaX, deltaY, deltaZ, angle, angleOfElevation = 0;
     double actAngle = getRotZ(actTransformation.transform);

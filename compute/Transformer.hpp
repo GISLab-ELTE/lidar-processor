@@ -35,6 +35,8 @@ public:
     CloudTransformer(std::vector<Calculator<PointType>*>& calculators, TransformData startData, std::shared_ptr<ViewerShareData<PointType>> shareData)
         : calculators(calculators), shareData(shareData), Processor<PointType>(), data(startData) {}
 
+    virtual ~CloudTransformer();
+
 protected:
     std::vector<Calculator<PointType>*> calculators;
 
@@ -42,15 +44,22 @@ protected:
 
     TransformData data;
 
-    typename pcl::PointCloud<PointType>::Ptr process(
+    typename pcl::PointCloud<PointType>::ConstPtr process(
         typename pcl::PointCloud<PointType>::ConstPtr input) override;
 
-    typename pcl::PointCloud<PointType>::Ptr transformCloud
+    typename pcl::PointCloud<PointType>::ConstPtr transformCloud
         (typename pcl::PointCloud<PointType>::ConstPtr input, TransformData& data);
 };
 
 template<typename PointType>
-typename pcl::PointCloud<PointType>::Ptr CloudTransformer<PointType>::process(
+CloudTransformer<PointType>::~CloudTransformer()
+{
+    for (Calculator<PointType>* calculator : calculators)
+        delete calculator;
+}
+
+template<typename PointType>
+typename pcl::PointCloud<PointType>::ConstPtr CloudTransformer<PointType>::process(
     typename pcl::PointCloud<PointType>::ConstPtr input)
 {
     TransformData bestData;
@@ -75,7 +84,7 @@ typename pcl::PointCloud<PointType>::Ptr CloudTransformer<PointType>::process(
 
     data.transform = data.transform * bestData.transform;
     
-    std::cerr << "distance x:" << data.transform.translation()(0) << std::endl;
+    /*std::cerr << "distance x:" << data.transform.translation()(0) << std::endl;
     std::cerr << "distance y:" << data.transform.translation()(1) << std::endl;
     std::cerr << "distance z:" << data.transform.translation()(2) << std::endl;
     std::cerr << "accuracy:" << bestData.percentage << std::endl;
@@ -84,13 +93,13 @@ typename pcl::PointCloud<PointType>::Ptr CloudTransformer<PointType>::process(
     std::cerr << "angle of elevation:" << getRotX(data.transform) * 180 / M_PI << std::endl;
     std::cerr << "delta angle of elevation:" << getRotX(bestData.transform) * 180 / M_PI << std::endl;
     std::cerr << "best calculator id:" << bestId << std::endl;
-    std::cerr << "---------------" << std::endl;
+    std::cerr << "---------------" << std::endl;*/
 
     return transformCloud(input, data);
 }
 
 template<typename PointType>
-typename pcl::PointCloud<PointType>::Ptr CloudTransformer<PointType>::transformCloud
+typename pcl::PointCloud<PointType>::ConstPtr CloudTransformer<PointType>::transformCloud
     (typename pcl::PointCloud<PointType>::ConstPtr input, TransformData& data)
 {
     typename pcl::PointCloud<PointType>::Ptr transformedCloud(new pcl::PointCloud<PointType>());
@@ -129,7 +138,7 @@ protected:
     bool first = true;
 
 
-    typename pcl::PointCloud<PointType>::Ptr process(
+    typename pcl::PointCloud<PointType>::ConstPtr process(
         typename pcl::PointCloud<PointType>::ConstPtr input) override;
 
     typename pcl::PointCloud<PointType>::Ptr filterPointsWithOctree
@@ -137,7 +146,7 @@ protected:
 };
 
 template<typename PointType>
-typename pcl::PointCloud<PointType>::Ptr MergeTransformer<PointType>::process(
+typename pcl::PointCloud<PointType>::ConstPtr MergeTransformer<PointType>::process(
     typename pcl::PointCloud<PointType>::ConstPtr input)
 {
     uint32_t cloudTimestamp = helper::calculatePointCloudTimeStamp(input->header.stamp);

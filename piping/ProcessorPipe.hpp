@@ -27,12 +27,12 @@ public:
 
     virtual ~ProcessorPipe();
 
-    typename pcl::PointCloud<PointType>::Ptr execute(typename pcl::PointCloud<PointType>::ConstPtr input);
+    typename pcl::PointCloud<PointType>::ConstPtr execute(typename pcl::PointCloud<PointType>::ConstPtr input);
 
 protected:
     std::vector<compute::Processor<PointType>*> processors;
     uint32_t previousTimestamp = 0;
-    typename pcl::PointCloud<PointType>::Ptr result;
+    typename pcl::PointCloud<PointType>::ConstPtr result;
 };
 
 
@@ -60,12 +60,12 @@ ProcessorPipe<PointType>* ProcessorPipe<PointType>::add(compute::Processor<Point
 
 
 template<typename PointType>
-typename pcl::PointCloud<PointType>::Ptr
+typename pcl::PointCloud<PointType>::ConstPtr
 ProcessorPipe<PointType>::execute(typename pcl::PointCloud<PointType>::ConstPtr input)
 {
     uint32_t cloudTimestamp = helper::calculatePointCloudTimeStamp(input->header.stamp);
 
-    typename pcl::PointCloud<PointType>::Ptr tmpResult;
+    typename pcl::PointCloud<PointType>::ConstPtr tmpResult;
     if (cloudTimestamp != previousTimestamp)
     {
         previousTimestamp = cloudTimestamp;

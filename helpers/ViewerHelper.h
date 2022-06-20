@@ -36,6 +36,8 @@ struct Color
 
 const static std::map<std::string, Color> calculatorColors = {{"stonexGPS", {1.0, 0.0, 1.0}},
                                                               {"mobileGPS", {0.0, 0.4, 1.0}},
+                                                              {"pcapGPS",   {0.6, 1.0, 0.6}},   // GPS read from csv exported from PCAP packages
+                                                              {"packetGPS", {0.0, 0.6, 0.0}},   // GPS read from PCAP packages
                                                               {"ICP",       {1.0, 1.0, 1.0}},
                                                               {"LOAM",      {0.6, 0.0, 0.6}}};
 

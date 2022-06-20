@@ -17,6 +17,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/io/grabber.h>
 
+#include "../grabber/GPSVLPGrabber.h"
+
 
 namespace olp
 {
@@ -47,16 +49,34 @@ public:
     inline void registerHandler(
         boost::function<void(typename pcl::PointCloud<PointType>::ConstPtr)> handler)
     {
-        _signal.connect(handler);
+        _cloudSignal.connect(handler);
+    }
+
+    /**
+     * Register a new handler for processed gps packet retrieval
+     * @param f
+     */
+    inline void registerGPSPacketHandler(
+        boost::function<void(olp::grabber::GPSVLPGrabber::GPSPacketConstPtr)> handler)
+    {
+        _gpsSignal.connect(handler);
+        _hasGPSCallback = true;
     }
 
 protected:
-    boost::signals2::signal<void(typename pcl::PointCloud<PointType>::ConstPtr)> _signal;
+    boost::signals2::signal<void(typename pcl::PointCloud<PointType>::ConstPtr)> _cloudSignal;
+    boost::signals2::signal<void(olp::grabber::GPSVLPGrabber::GPSPacketConstPtr)> _gpsSignal;
+    bool _hasGPSCallback = false;
 
     inline void onNewCloud(
         typename pcl::PointCloud<PointType>::ConstPtr input)
     {
-        _signal(input);
+        _cloudSignal(input);
+    }
+
+    inline void onNewGPSPacket(olp::grabber::GPSVLPGrabber::GPSPacketConstPtr input)
+    {
+        _gpsSignal(input);
     }
 };
 
@@ -75,9 +95,9 @@ public:
     void stop() override;
 
 private:
-    boost::signals2::connection connection;
-    boost::signals2::signal<void(const typename pcl::PointCloud<PointType>::ConstPtr)> _signal;
     pcl::Grabber& grabber;
+    boost::signals2::connection cloudConnection;
+    boost::signals2::connection gpsConnection;
 };
 
 template<typename PointType>
@@ -87,8 +107,15 @@ void GrabberProducer<PointType>::start()
     boost::function<void(const typename pcl::PointCloud<PointType>::ConstPtr&)> callback =
         boost::bind(&GrabberProducer::onNewCloud, this, _1);
 
-    // Register Callback Function
-    connection = grabber.registerCallback(callback);
+    // Register Cloud Callback Function
+    cloudConnection = grabber.registerCallback(callback);
+
+    if(Producer<PointType>::_hasGPSCallback) {
+        boost::function<void(const olp::grabber::GPSVLPGrabber::GPSPacketConstPtr&)> gpsCallback =
+            boost::bind(&GrabberProducer::onNewGPSPacket, this, _1);
+
+        gpsConnection = grabber.registerCallback(gpsCallback);
+    }
 
     // Start Grabber
     grabber.start();
@@ -101,8 +128,11 @@ void GrabberProducer<PointType>::stop()
     grabber.stop();
 
     // Disconnect Callback Function
-    if (connection.connected())
-        connection.disconnect();
+    if (cloudConnection.connected())
+        cloudConnection.disconnect();
+    
+    if (gpsConnection.connected())
+        gpsConnection.disconnect();
 }
 
 } // compute

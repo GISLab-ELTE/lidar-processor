@@ -16,6 +16,9 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# CMake module directory (for FindPCAP)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
+
 # SLAM support (not Windows compatible)
 option(WITH_SLAM "Build SLAM algorithms" ON) # Enabled by default
 if(WITH_SLAM)
@@ -44,6 +47,9 @@ find_package(PCL 1.8 REQUIRED)
 include_directories(${PCL_INCLUDE_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 link_directories(${PCL_LIBRARY_DIRS})
+
+# PCAP
+find_package(PCAP)
 
 # LAStools
 find_package(LASlib PATHS vendor/LAStools/install)
@@ -94,6 +100,7 @@ add_executable(olp
     helpers/CsvFileWriter.h
     helpers/Utility.h
     helpers/ViewerHelper.h
+    helpers/GPSExtrapolationHelper.hpp
     piping/ProcessorPipe.hpp
     compute/Processor.h
     compute/Producer.hpp
@@ -102,14 +109,19 @@ add_executable(olp
     compute/Transformer.hpp
     compute/calculators/Calculator.h
     compute/calculators/GPSCalculator.hpp
+    compute/calculators/GPSPacketCalculator.hpp
     compute/calculators/ICPSLAMCalculator.hpp
     compute/calculators/LOAMSLAMCalculator.hpp
+    grabber/GPSPacket.h
+    grabber/GPSVLPGrabber.h grabber/GPSVLPGrabber.cpp
+    grabber/NmeaParser.h grabber/NmeaParser.cpp
 )
 
 target_link_libraries(olp
-    ${LASlib_LIBRARIES}
     ${Boost_LIBRARIES}
     ${PCL_LIBRARIES}
+    ${PCAP_LIBRARY}
+    ${LASlib_LIBRARIES}
     ${libpointmatcher_LIBRARIES}
     ${libnabo_LIBRARIES}
     ikalman

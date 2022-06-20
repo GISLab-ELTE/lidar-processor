@@ -32,13 +32,13 @@ public:
     OrigoFilter() : Processor<PointType>() {}
 
 protected:
-    typename pcl::PointCloud<PointType>::Ptr process(
+    typename pcl::PointCloud<PointType>::ConstPtr process(
         typename pcl::PointCloud<PointType>::ConstPtr input) override
     {
         return filterPoints(input);
     }
 
-    typename pcl::PointCloud<PointType>::Ptr filterPoints
+    typename pcl::PointCloud<PointType>::ConstPtr filterPoints
         (typename pcl::PointCloud<PointType>::ConstPtr input,
          float minX = -1.0, float maxX = 1.0, float minY = -1.0, float maxY = 1.0, float minZ = -16.0,
          float maxZ = 16.0)

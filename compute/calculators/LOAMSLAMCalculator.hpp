@@ -29,7 +29,7 @@ template<typename PointType>
 class LOAMSLAMCalculator : public Calculator<PointType>
 {
 public:
-    LOAMSLAMCalculator(TransformData data) : Calculator<PointType>(data), BEAMCOUNT_(16), _barrier(BEAMCOUNT_ + 1)
+    LOAMSLAMCalculator(const TransformData& data) : Calculator<PointType>(data), BEAMCOUNT_(16), _barrier(BEAMCOUNT_ + 1)
     {
         _previousCloud = pcl::PointCloud<PointType>().makeShared();
     }

@@ -28,7 +28,7 @@ public:
   * @param input Input point cloud
   * @return Processed output point cloud
   */
-    virtual typename pcl::PointCloud<PointType>::Ptr process(
+    virtual typename pcl::PointCloud<PointType>::ConstPtr process(
         typename pcl::PointCloud<PointType>::ConstPtr input) = 0;
 };
 

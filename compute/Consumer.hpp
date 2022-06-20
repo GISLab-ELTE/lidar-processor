@@ -37,7 +37,7 @@ template<typename PointType>
 class Consumer
 {
 public:
-    virtual void show(typename pcl::PointCloud<PointType>::Ptr input) = 0;
+    virtual void show(typename pcl::PointCloud<PointType>::ConstPtr input) = 0;
     virtual void addShareData(std::shared_ptr<olp::helper::ViewerShareData<PointType>> shareData) = 0;
 };
 
@@ -47,7 +47,7 @@ class ViewConsumer : public Consumer<PointType>
 public:
     ViewConsumer(olp::Viewer<PointType>& viewer) : Consumer<PointType>(), viewer(viewer) {}
 
-    void show(typename pcl::PointCloud<PointType>::Ptr input) override
+    void show(typename pcl::PointCloud<PointType>::ConstPtr input) override
     {
         viewer.update(input);
     }
@@ -72,7 +72,7 @@ public:
         startTime = start;
     }
 
-    void show(typename pcl::PointCloud<PointType>::Ptr input) override
+    void show(typename pcl::PointCloud<PointType>::ConstPtr input) override
     {
         writeFile(input);
     }

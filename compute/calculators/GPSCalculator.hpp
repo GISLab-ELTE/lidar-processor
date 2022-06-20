@@ -32,7 +32,7 @@ template<typename PointType>
 class GPSCalculator : public Calculator<PointType>
 {
 public:
-    GPSCalculator(std::vector<gps::GPS>& gps, uint64_t& time, TransformData data,
+    GPSCalculator(std::vector<gps::GPS>& gps, uint64_t& time, const TransformData& data,
                   gps::GPSSource source = gps::GPSSource::stonex,
                   gps::GPSCoordType coordType = gps::GPSCoordType::latlong)
         : Calculator<PointType>(data)
@@ -102,8 +102,8 @@ TransformData GPSCalculator<PointType>::matchWithGPS(typename pcl::PointCloud<Po
 
         if (gpsCloudMap.size() > 0)
         {
-            data = calculateTransformData(gpsCloudMap[gpsCloudMap.size() - 1], gpsData[index], this->startData,
-                                          coordType);
+            data = gps::calculateTransformData(gpsCloudMap[gpsCloudMap.size() - 1], gpsData[index], this->startData,
+                                               coordType);
             data.percentage = gpsData[index].accuracy;
             int timeDiff = (gpsData[index].secondsSinceReference - timestamp);
             data.percentage -= 10 * (timeDiff < 0 ? -timeDiff : timeDiff);

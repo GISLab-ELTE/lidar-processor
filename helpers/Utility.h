@@ -33,9 +33,9 @@ struct TransformData
         : transform(transform), percentage(percentage) {}
 };
 
-inline uint32_t calculatePointCloudTimeStamp(uint64_t stamp)
+inline uint32_t calculatePointCloudTimeStamp(uint64_t stamp, uint32_t scale = 1000000)
 {
-    return ((stamp & 0x00000000ffffffffl) / 1000000);
+    return ((stamp & 0x00000000ffffffffl) / scale);
 }
 
 inline double getRotX(const Eigen::Affine3d& matrix)

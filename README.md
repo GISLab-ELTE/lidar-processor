@@ -37,8 +37,8 @@ The project uses some third-party dependencies:
  2. [CMake](https://cmake.org/) is used as the build system of the project. Version 2.8 or newer is required.
  3. [Boost](https://www.boost.org/) is used as an extension to the C++ standard library. (Dependency of PCL anyway.) Version 1.60 or newer required.
  4. [PCL](http://pointclouds.org/) is heavily used in point cloud processing and I/O management. Version 1.8 or newer is required.
- 5. [LASlib](https://github.com/LAStools/LAStools/tree/master/LASlib/) *(optional)*, to export point clouds in LAS format.
- 6. [PCAP](https://en.wikipedia.org/wiki/Pcap) *(optional)*, to read and "replay" previously recorded PCAP files of a Velodyne sensor.
+ 5. [PCAP](https://en.wikipedia.org/wiki/Pcap) *(optional)* to read and "replay" previously recorded PCAP files of a Velodyne sensor.
+ 6. [LASlib](https://github.com/LAStools/LAStools/tree/master/LASlib/) *(optional)*, to export point clouds in LAS format.
  7. [libpointmatcher](https://github.com/ethz-asl/libpointmatcher) *(optional)* for the ICP SLAM algorithm.
 
 The complete compilation process depends on the system you are using (Linux, Mac OS X or Windows). See the platform-specific compilation guides below.

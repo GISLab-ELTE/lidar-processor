@@ -25,7 +25,7 @@ class Calculator
 public:
     helper::TransformData startData;
 
-    inline Calculator(helper::TransformData start) : startData(start) {};
+    inline Calculator(const helper::TransformData& start) : startData(start) {};
 
     virtual ~Calculator() {}
 

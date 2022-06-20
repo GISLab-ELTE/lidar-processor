@@ -32,7 +32,7 @@ namespace gps
 {
 enum GPSSource
 {
-    stonex, mobile
+    stonex, mobile, pcap
 };
 enum GPSCoordType
 {
@@ -41,7 +41,8 @@ enum GPSCoordType
 
 const std::map<GPSSource, std::string> GpsStringIds = {
     {stonex, "stonexGPS"},
-    {mobile, "mobileGPS"}
+    {mobile, "mobileGPS"},
+    {pcap, "pcapGPS"}
 };
 
 struct GPS
@@ -85,11 +86,11 @@ void write(const std::string& fileName, const std::vector<GPS>& gps_data);
 typedef std::vector<Point> PointVector;
 typedef std::map<int, PointVector> MapPointVector;
 
-std::vector<GPS> kalmanFilter(std::vector<GPS>& gpsData, int startIndex, GPSSource source);
+std::vector<GPS> kalmanFilter(const std::vector<GPS>& gpsData, int startIndex);
 
 int getStartIndex(std::vector<GPS> gpsData, uint64_t time);
 
-TransformData calculateTransformData(GPS& data1, GPS& data2, TransformData& actTransformation, GPSCoordType coordType = GPSCoordType::latlong);
+TransformData calculateTransformData(const GPS& data1, const GPS& data2, const TransformData& actTransformation, GPSCoordType coordType = GPSCoordType::latlong);
 
 double calculateDistance(const Point& from, const Point& to);
 

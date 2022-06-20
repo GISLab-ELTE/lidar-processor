@@ -13,7 +13,6 @@
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl/io/vlp_grabber.h>
 #include <pcl/io/pcd_grabber.h>
 
 #include <pcl/visualization/pcl_visualizer.h>
@@ -32,7 +31,10 @@
 #include "compute/Filter.hpp"
 #include "compute/Producer.hpp"
 #include "compute/Transformer.hpp"
+#include "compute/GPSAligner.hpp"
 #include "compute/calculators/GPSCalculator.hpp"
+#include "compute/calculators/GPSPacketCalculator.hpp"
+#include "grabber/GPSVLPGrabber.h"
 
 #ifdef WITH_SLAM
 #include "compute/calculators/ICPSLAMCalculator.hpp"
@@ -52,7 +54,7 @@ compute::GPSCalculator<pcl::PointXYZI>* createGPSCalculator(const std::string& c
 
     helper::TransformData startData = TransformData();
     if(j < gpsData.size()) {
-        std::vector<gps::GPS> gpsDataWithKalmanFilter = gps::kalmanFilter(gpsData, j, source);
+        std::vector<gps::GPS> gpsDataWithKalmanFilter = gps::kalmanFilter(gpsData, j);
         gps::write(fileName, gpsDataWithKalmanFilter);
 
         int start = gps::getStartIndex(gpsDataWithKalmanFilter, time);
@@ -80,11 +82,14 @@ int main(int argc, char *argv[])
         std::cout << "usage: " << argv[0]
                   << " [--ip <192.168.1.201>]"
                   << " [--port <2368>]"
+                  << " [--withgps]"
+                  << " [--exportpcapgps]"
                   << " [--file <*.pcap>]"
                   << " [--stime <1571071222>]"
                   << " [--dir <pcd_dir>]"
                   << " [--csvfile <*.csv>]"
                   << " [--mcsvfile <*.csv>]"
+                  << " [--pcapcsvfile <*.csv>]"
                   << " [--filter]"
                   << " [--wftype] <pcd> | <las>"
 #ifdef WITH_SLAM
@@ -101,15 +106,17 @@ int main(int argc, char *argv[])
     std::string pcap;
     std::string csv;
     std::string mobileCSV;
+    std::string pcapCSV;
     std::string pcd_dir;
     std::string writeFileType = "las";
-    int start_time;
+    int start_time = 0;
 
     pcl::console::parse_argument(argc, argv, "--ip", ipaddress);
     pcl::console::parse_argument(argc, argv, "--port", port);
     pcl::console::parse_argument(argc, argv, "--file", pcap);
     pcl::console::parse_argument(argc, argv, "--csvfile", csv);
     pcl::console::parse_argument(argc, argv, "--mcsvfile", mobileCSV);
+    pcl::console::parse_argument(argc, argv, "--pcapcsvfile", pcapCSV);
     pcl::console::parse_argument(argc, argv, "--dir", pcd_dir);
     pcl::console::parse_argument(argc, argv, "--wftype", writeFileType);
     pcl::console::parse_argument(argc, argv, "--stime", start_time);
@@ -122,6 +129,8 @@ int main(int argc, char *argv[])
 #endif
 
     bool filter = pcl::console::find_switch(argc, argv, "--filter");
+    bool withGPS = pcl::console::find_switch(argc, argv, "--withgps");
+    bool exportPcapGps = pcl::console::find_switch(argc, argv, "--exportpcapgps");
 
     // Color handler
     std::shared_ptr<pcl::visualization::PointCloudColorHandler<pcl::PointXYZI>> color_handler;
@@ -143,13 +152,13 @@ int main(int argc, char *argv[])
         if (!pcap.empty())
         {
             std::cout << "Capture from PCAP file: " << pcap << std::endl;
-            grabber = std::make_shared<pcl::VLPGrabber>(pcap);
+            grabber = std::make_shared<grabber::GPSVLPGrabber>(pcap, exportPcapGps);
         }
         else if (!ipaddress.empty() && !port.empty())
         {
             std::cout << "Capture from sensor " << ipaddress << ":" << port << std::endl;
-            grabber = std::make_shared<pcl::VLPGrabber>(boost::asio::ip::address::from_string(ipaddress),
-                                                        boost::lexical_cast<unsigned short>(port));
+            grabber = std::make_shared<grabber::GPSVLPGrabber>(boost::asio::ip::address::from_string(ipaddress),
+                                                               boost::lexical_cast<unsigned short>(port));
         }
         else
         {
@@ -185,6 +194,11 @@ int main(int argc, char *argv[])
         shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
     }
 
+    if (!pcapCSV.empty()) {
+        calculators.push_back(createGPSCalculator(pcapCSV, time, gps::GPSSource::pcap, "kalman_filter_test_mobile.csv"));
+        shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
+    }
+
     TransformData startData;
     if (!pcap.empty() && calculators.size() != 0)
         startData = calculators[0]->startData;
@@ -199,6 +213,21 @@ int main(int argc, char *argv[])
         shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
     }
 #endif
+
+    if (withGPS) {
+        compute::GPSPacketCalculator<pcl::PointXYZI>* calculator = new compute::GPSPacketCalculator<pcl::PointXYZI>(startData, time);
+        calculators.push_back(calculator);
+        shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
+
+        compute::GPSAligner<pcl::PointXYZI>* gpsAligner = new compute::GPSAligner<pcl::PointXYZI> ();
+        processorPipe.add(gpsAligner);
+        grabberProducer.registerGPSPacketHandler(
+        [calculator, gpsAligner] (const olp::grabber::GPSVLPGrabber::GPSPacketConstPtr& packet) -> void
+        {
+            gpsAligner->UpdateGPSTimestamp(packet->timestamp);
+            calculator->addPacket(packet);
+        });
+    }
 
     if (calculators.size() > 0) {
         compute::CloudTransformer<pcl::PointXYZI>* cloudTransformer = new compute::CloudTransformer<pcl::PointXYZI>(
@@ -231,7 +260,6 @@ int main(int argc, char *argv[])
 
         }
     );
-
     grabberProducer.start();
     viewer.run();
     grabberProducer.stop();

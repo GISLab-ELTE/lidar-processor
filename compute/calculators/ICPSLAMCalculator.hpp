@@ -30,7 +30,7 @@ template<typename PointType>
 class ICPSLAMCalculator : public Calculator<PointType>
 {
 public:
-    ICPSLAMCalculator(TransformData data, int processEveryX = 1) : Calculator<PointType>(data),
+    ICPSLAMCalculator(const TransformData& data, int processEveryX = 1) : Calculator<PointType>(data),
                                                              PROCESSEVERYX(processEveryX) {}
 
     TransformData calculate(typename pcl::PointCloud<PointType>::ConstPtr input) override;
@@ -73,15 +73,21 @@ TransformData ICPSLAMCalculator<PointType>::calculate(typename pcl::PointCloud<P
         configureICP();
         const DP reference = cloud;
         const DP reading = _clouds[0];
-        PM::TransformationParameters transform = icp(reading, reference);
-        _clouds[0] = cloud;
+        try {
+            PM::TransformationParameters transform = icp(reading, reference);
+            _clouds[0] = cloud;
+            _cloudCount++;
+            return TransformData(transform.inverse().cast<double>(), 70);
+        }
+        // for non-converging ICP
+        catch(...) {
+            return TransformData();
+        }
 
 //            std::cerr << "---------------" << std::endl
 //                    << "icp error: " << calculateError(reference,reading,transform) << std::endl
 //                    << "---------------" << std::endl << std::endl;
-        _cloudCount++;
 
-        return TransformData(transform.inverse().cast<double>(), 70);
     }
     else
     {
