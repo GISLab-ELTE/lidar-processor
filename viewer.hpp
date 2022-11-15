@@ -111,6 +111,8 @@ void Viewer<PointType>::run()
                     }
                     ++i;
                 }
+                PointType lastPoint;
+                bool trajectoryNotEmpty = !_shareData->trajectoryQueue.empty();
                 while(!_shareData->trajectoryQueue.empty()){
                     auto current = _shareData->trajectoryQueue.front();
                     // Add next trajectory line
@@ -123,7 +125,30 @@ void Viewer<PointType>::run()
                     _viewer->addSphere(current.first, 0.2, bestColor.r, bestColor.g, bestColor.b, "sphere" + std::to_string(segmentId));
                     _prevTrajectoryPoint = current.first;
                     ++segmentId;
+                    lastPoint = current.first;
                     _shareData->trajectoryQueue.pop();
+                }
+                helper::imu::IMUEstimate& currentIMUEstimate = _shareData->currentIMUEstimate;
+                Eigen::Vector3f v(0, 0, 0);
+                if (trajectoryNotEmpty && (
+                    currentIMUEstimate.pitch != 0 ||
+                    currentIMUEstimate.yaw != 0 ||
+                    currentIMUEstimate.roll != 0))
+                {
+                    pcl::PointXYZI p1 = lastPoint;
+                    v = Eigen::Vector3f(p1.x, p1.y, p1.z);
+                }
+                Eigen::Quaternionf q = currentIMUEstimate.quaternion;
+
+                if (!_viewer->contains("imucube"))
+                {
+                    _viewer->addCube(v, q, 0.5f, 0.3f, 1.0f, "imucube");
+                }
+                else
+                {
+                    Eigen::Affine3f af = Eigen::Affine3f::Identity();
+                    af.template fromPositionOrientationScale(v, q, Eigen::Vector3f(1, 1, 1));
+                    _viewer->updateShapePose("imucube", af);
                 }
             }
         }

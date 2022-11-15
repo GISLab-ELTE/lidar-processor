@@ -41,6 +41,8 @@
 #include "compute/calculators/LOAMSLAMCalculator.hpp"
 #endif
 
+#include "compute/IMUProcessor.hpp"
+
 using namespace olp;
 using namespace olp::helper;
 
@@ -72,6 +74,59 @@ compute::GPSCalculator<pcl::PointXYZI>* createGPSCalculator(const std::string& c
     return gpsCalculator;
 }
 
+compute::IMUProcessor<pcl::PointXYZI>* createIMUCalculator(const std::string& fileName)
+{
+    int tmp;
+
+    float gyroX, gyroY, gyroZ;
+    int magX, magY, magZ, accX, accY, accZ;
+
+    auto* readings = new std::vector<imu::IMUReading>();
+
+    ifstream imuStream(fileName);
+    int skipMs;
+    float samplePeriodMs, gyroSensitivity, accSensitivity, magSensitivity;
+
+    float magxmax = 0, magxmin = 0, magymax = 0, magymin = 0, magzmax = 0, magzmin = 0;
+
+    imuStream >> skipMs >> samplePeriodMs >> gyroSensitivity >> accSensitivity >> magSensitivity;
+    while (!imuStream.eof())
+    {
+        imuStream >> tmp >> gyroX >> gyroY >> gyroZ
+                  >> accX >> accY >> accZ
+                  >> magX >> magY >> magZ;
+        readings->emplace_back(accX, accY, accZ, gyroX, gyroY, gyroZ, magX, magY, magZ);
+
+        if(magX * magSensitivity > magxmax) magxmax = magX * magSensitivity;
+        if(magX * magSensitivity < magxmin) magxmin = magX * magSensitivity;
+        if(magY * magSensitivity > magymax) magymax = magY * magSensitivity;
+        if(magY * magSensitivity < magymin) magymin = magY * magSensitivity;
+        if(magZ * magSensitivity > magzmax) magzmax = magZ * magSensitivity;
+        if(magZ * magSensitivity < magzmin) magzmin = magZ * magSensitivity;
+    }
+    imuStream.close();
+
+    float hardIronX = (magxmax + magxmin) / 2;
+    float hardIronY = (magymax + magymin) / 2;
+    float hardIronZ = (magzmax + magzmin) / 2;
+
+    float scaleX = (magxmax - magxmin) / 2;
+    float scaleY = (magymax - magymin) / 2;
+    float scaleZ = (magzmax - magzmin) / 2;
+
+    float avg = (scaleX + scaleY + scaleZ) / 3.0f;
+
+    FusionRotationMatrix softIron{{avg * 1 / scaleX, 0, 0, 0, avg * 1 / scaleY, 0, 0, 0, avg * 1 / scaleZ}};
+    FusionVector3 hardIron{hardIronX, hardIronY, hardIronZ};
+
+    return new compute::IMUProcessor<pcl::PointXYZI>(
+        TransformData(),
+        new FusionFilter(0.02, 0.07f, 0.000244f, 0.029231219f,
+                         hardIron, softIron),
+        readings, skipMs
+    );
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -92,6 +147,7 @@ int main(int argc, char *argv[])
                   << " [--pcapcsvfile <*.csv>]"
                   << " [--filter]"
                   << " [--wftype] <pcd> | <las>"
+                  << " [--imucsv <*.csv>]"
 #ifdef WITH_SLAM
                   << " [--slamtype] <none> | <icp> | <loam>"
 #endif
@@ -106,6 +162,7 @@ int main(int argc, char *argv[])
     std::string pcap;
     std::string csv;
     std::string mobileCSV;
+    std::string imuCSV;
     std::string pcapCSV;
     std::string pcd_dir;
     std::string writeFileType = "las";
@@ -120,6 +177,7 @@ int main(int argc, char *argv[])
     pcl::console::parse_argument(argc, argv, "--dir", pcd_dir);
     pcl::console::parse_argument(argc, argv, "--wftype", writeFileType);
     pcl::console::parse_argument(argc, argv, "--stime", start_time);
+    pcl::console::parse_argument(argc, argv, "--imucsv", imuCSV);
 
 #ifdef WITH_SLAM
     std::string slamType = "none";
@@ -228,13 +286,15 @@ int main(int argc, char *argv[])
             calculator->addPacket(packet);
         });
     }
-
+    if (!imuCSV.empty()) {
+        processorPipe.add(createIMUCalculator(imuCSV));
+        //shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
+    }
     if (calculators.size() > 0) {
         compute::CloudTransformer<pcl::PointXYZI>* cloudTransformer = new compute::CloudTransformer<pcl::PointXYZI>(
             calculators, calculators[0]->startData, shareData);
         processorPipe.add(cloudTransformer);
     }
-
     compute::MergeTransformer<pcl::PointXYZI>* mergeProcessor = new compute::MergeTransformer<pcl::PointXYZI>();
     processorPipe.add(mergeProcessor);
 

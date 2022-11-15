@@ -13,6 +13,7 @@
 #include <map>
 #include <queue>
 #include <utility>
+#include "IMUHelper.h"
 
 namespace olp
 {
@@ -39,13 +40,15 @@ const static std::map<std::string, Color> calculatorColors = {{"stonexGPS", {1.0
                                                               {"pcapGPS",   {0.6, 1.0, 0.6}},   // GPS read from csv exported from PCAP packages
                                                               {"packetGPS", {0.0, 0.6, 0.0}},   // GPS read from PCAP packages
                                                               {"ICP",       {1.0, 1.0, 1.0}},
-                                                              {"LOAM",      {0.6, 0.0, 0.6}}};
+                                                              {"LOAM",      {0.6, 0.0, 0.6}},
+                                                              {"IMU",       {0.5, 1.0, 0.0}}};
 
 template<typename PointType>
 struct ViewerShareData
 {
     std::map<std::string, double> precisionMap;
     std::queue<std::pair<PointType, std::string>> trajectoryQueue;
+    imu::IMUEstimate currentIMUEstimate;
     PointType tempPoint;
     std::string tempId;
 

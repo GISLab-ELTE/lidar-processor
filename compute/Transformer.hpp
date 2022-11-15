@@ -22,6 +22,7 @@
 #include "Processor.h"
 #include "calculators/Calculator.h"
 #include "calculators/GPSCalculator.hpp"
+#include "IMUProcessor.hpp"
 
 namespace olp
 {
@@ -79,6 +80,12 @@ typename pcl::PointCloud<PointType>::ConstPtr CloudTransformer<PointType>::proce
             bestData = actData;
             bestId = i;
             shareData->tempId = calculators.at(i)->stringId();
+        }
+
+        if (calculators.at(i)->stringId() == "IMU")
+        {
+            shareData->currentIMUEstimate = dynamic_cast<IMUProcessor<PointType>*>(calculators.at(
+                i))->getCurrentEstimate();
         }
     }
 

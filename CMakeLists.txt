@@ -81,7 +81,7 @@ include_directories(vendor/ikalman)
 add_library(ikalman
     vendor/ikalman/kalman.c vendor/ikalman/kalman.h
     vendor/ikalman/matrix.c vendor/ikalman/matrix.h
-    vendor/ikalman/gps.c vendor/ikalman/gps.h)
+    vendor/ikalman/gps.c vendor/ikalman/gps.h compute/IMU/FusionAHRS/FusionFilter.hpp)
 
 # TinyEKF
 include_directories(vendor/TinyEKF/src)
@@ -112,10 +112,23 @@ add_executable(olp
     compute/calculators/GPSPacketCalculator.hpp
     compute/calculators/ICPSLAMCalculator.hpp
     compute/calculators/LOAMSLAMCalculator.hpp
+    compute/IMUProcessor.hpp
+    compute/IMU/MadgwickAHRS/MadgwickAHRS.h compute/IMU/MadgwickAHRS/MadgwickAHRS.cpp
     grabber/GPSPacket.h
     grabber/GPSVLPGrabber.h grabber/GPSVLPGrabber.cpp
     grabber/NmeaParser.h grabber/NmeaParser.cpp
-)
+    compute/IMU/AHRSFilter.h compute/IMU/MadgwickAHRS/MadgwickFilter.hpp
+    compute/IMU/FusionAHRS/Fusion.h
+    compute/IMU/FusionAHRS/FusionAhrs.c
+    compute/IMU/FusionAHRS/FusionAhrs.h
+    compute/IMU/FusionAHRS/FusionBias.c
+    compute/IMU/FusionAHRS/FusionBias.h
+    compute/IMU/FusionAHRS/FusionCalibration.h
+    compute/IMU/FusionAHRS/FusionCompass.c
+    compute/IMU/FusionAHRS/FusionCompass.h
+    compute/IMU/FusionAHRS/FusionTypes.h
+    compute/IMU/FusionAHRS/FusionFilter.hpp
+    helpers/IMUHelper.h)
 
 target_link_libraries(olp
     ${Boost_LIBRARIES}
