@@ -190,8 +190,9 @@ int main(int argc, char *argv[])
 
     bool filter = pcl::console::find_switch(argc, argv, "--filter");
     bool withGPS = pcl::console::find_switch(argc, argv, "--withgps");
-    bool noPPS = pcl::console::find_switch(argc, argv, "--nopps");
     bool exportPcapGps = pcl::console::find_switch(argc, argv, "--exportpcapgps");
+    bool noPcapPps = pcl::console::find_switch(argc, argv, "--nopcappps");
+    bool noPcapEkf = pcl::console::find_switch(argc, argv, "--nopcapekf");
 
     // Color handler
     std::shared_ptr<pcl::visualization::PointCloudColorHandler<pcl::PointXYZI>> color_handler;
@@ -213,14 +214,14 @@ int main(int argc, char *argv[])
         if (!pcap.empty())
         {
             std::cout << "Capture from PCAP file: " << pcap << std::endl;
-            grabber = std::make_shared<grabber::GPSVLPGrabber>(pcap, exportPcapGps, !noPPS);
+            grabber = std::make_shared<grabber::GPSVLPGrabber>(pcap, exportPcapGps, !noPcapPps);
         }
         else if (!ipaddress.empty() && !port.empty())
         {
             std::cout << "Capture from sensor " << ipaddress << ":" << port << std::endl;
             grabber = std::make_shared<grabber::GPSVLPGrabber>(boost::asio::ip::address::from_string(ipaddress),
                                                                boost::lexical_cast<unsigned short>(port),
-                                                               !noPPS);
+                                                               !noPcapPps);
         }
         else
         {
@@ -233,7 +234,7 @@ int main(int argc, char *argv[])
     compute::GrabberProducer<pcl::PointXYZI> grabberProducer(*grabber);
     pipe::ProcessorPipe<pcl::PointXYZI> processorPipe;
 
-    if(filter)
+    if (filter)
     {
         compute::Processor<pcl::PointXYZI>* filter = new compute::OrigoFilter<pcl::PointXYZI>();
         processorPipe.add(filter);
@@ -257,7 +258,7 @@ int main(int argc, char *argv[])
     }
 
     if (!pcapCSV.empty()) {
-        calculators.push_back(createGPSCalculator(pcapCSV, time, gps::GPSSource::pcap, "kalman_filter_test_mobile.csv"));
+        calculators.push_back(createGPSCalculator(pcapCSV, time, gps::GPSSource::pcap, "kalman_filter_test_pcap.csv"));
         shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
     }
 
@@ -277,7 +278,7 @@ int main(int argc, char *argv[])
 #endif
 
     if (withGPS) {
-        compute::GPSPacketCalculator<pcl::PointXYZI>* calculator = new compute::GPSPacketCalculator<pcl::PointXYZI>(startData, time);
+        compute::GPSPacketCalculator<pcl::PointXYZI>* calculator = new compute::GPSPacketCalculator<pcl::PointXYZI>(startData, time, 500000, !noPcapEkf);
         calculators.push_back(calculator);
         shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
 

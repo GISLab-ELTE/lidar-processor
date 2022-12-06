@@ -42,7 +42,7 @@ template<typename PointType>
 class GPSPacketCalculator : public Calculator<PointType>
 {
 public:
-    GPSPacketCalculator (const helper::TransformData& data, std::uint64_t startTime, std::uint32_t timeScale = 500000)
+    GPSPacketCalculator (const helper::TransformData& data, std::uint64_t startTime, std::uint32_t timeScale = 500000, bool useEKF = true)
         : Calculator<PointType>     (data)
         , timeScale                 (timeScale)
         , hasDoneFirstCalculation   (false)
@@ -51,6 +51,7 @@ public:
         , lastParsedTimestamp       (0)
         , prevGPSPoint              ()
         , startTime                 (startTime)
+        , useEKF                    (useEKF)
     {}
 
 
@@ -87,6 +88,7 @@ private:
 
     const std::uint32_t timeScale;
     const std::uint64_t startTime;
+    const bool useEKF;
 
     std::uint32_t       lastParsedTimestamp;
     // the GPS point used for the previous positioning
@@ -142,25 +144,30 @@ helper::gps::GPS GPSPacketCalculator<PointType>::getMatchingGPS (const std::uint
     bool found = false;
     while (!found && !gpsDataQueue.empty () && gpsDataQueue.front ().secondsSinceReference <= cloudStamp) {
         helper::gps::GPS front = gpsDataQueue.front ();
+        gpsDataQueue.pop ();
 
-        ekfHelper.setRMatrix ((1000 - front.accuracy) * 10);
-        if (hasUsedFirstPacket) {
-            ekfHelper.update (front, front);
-            hasUsedFirstPacket = true;
-        }
-        else {
-            ekfHelper.update (front, match);
-        }
-
-        helper::gps::Point newCoord = ekfHelper.getNewCoord ();
-
-        match.latitude = newCoord.x;
-        match.longitude = newCoord.y;
-        match.elevation = newCoord.z;
+        match.latitude = front.latitude;
+        match.longitude = front.longitude;
+        match.elevation = front.elevation;
         match.accuracy = front.accuracy;
         match.secondsSinceReference = front.secondsSinceReference;
 
-        gpsDataQueue.pop ();
+        if (useEKF) {
+            ekfHelper.setRMatrix ((1000 - front.accuracy) * 10);
+            if (hasUsedFirstPacket) {
+                ekfHelper.update (front, front);
+                hasUsedFirstPacket = true;
+            }
+            else {
+                ekfHelper.update (front, match);
+            }
+
+            helper::gps::Point newCoord = ekfHelper.getNewCoord ();
+
+            match.latitude = newCoord.x;
+            match.longitude = newCoord.y;
+            match.elevation = newCoord.z;
+        }
 
         if (match.secondsSinceReference == cloudStamp)
             found = true;
