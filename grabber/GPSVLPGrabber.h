@@ -41,10 +41,12 @@ public:
     using SigGPSPacketReadyT = void (const GPSPacketConstPtr&);
 
     GPSVLPGrabber (const std::string& pcapFile,
-                   bool logGpsPackets = false);
+                   bool logGpsPackets = false,
+                   bool requirePPS = true);
 
     GPSVLPGrabber (const boost::asio::ip::address& ipAddress,
-                   const std::uint16_t port);
+                   const std::uint16_t port,
+                   bool requirePPS = true);
     
     virtual ~GPSVLPGrabber () noexcept override;
 
@@ -73,6 +75,8 @@ private:
     boost::asio::ip::udp::endpoint listenGPSPacketEndpoint;
     boost::asio::io_service listenGPSPacketSocketService;
     std::unique_ptr<boost::asio::ip::udp::socket> listenGPSPacketSocket;
+
+    bool requirePPS;
     
     void Initialize ();
     void ProcessGPSPacket ();

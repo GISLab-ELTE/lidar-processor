@@ -167,6 +167,7 @@ int main(int argc, char *argv[])
     std::string pcd_dir;
     std::string writeFileType = "las";
     int start_time = 0;
+    int cloud_offset = 0;
 
     pcl::console::parse_argument(argc, argv, "--ip", ipaddress);
     pcl::console::parse_argument(argc, argv, "--port", port);
@@ -177,6 +178,7 @@ int main(int argc, char *argv[])
     pcl::console::parse_argument(argc, argv, "--dir", pcd_dir);
     pcl::console::parse_argument(argc, argv, "--wftype", writeFileType);
     pcl::console::parse_argument(argc, argv, "--stime", start_time);
+    pcl::console::parse_argument(argc, argv, "--offset", cloud_offset);
     pcl::console::parse_argument(argc, argv, "--imucsv", imuCSV);
 
 #ifdef WITH_SLAM
@@ -188,6 +190,7 @@ int main(int argc, char *argv[])
 
     bool filter = pcl::console::find_switch(argc, argv, "--filter");
     bool withGPS = pcl::console::find_switch(argc, argv, "--withgps");
+    bool noPPS = pcl::console::find_switch(argc, argv, "--nopps");
     bool exportPcapGps = pcl::console::find_switch(argc, argv, "--exportpcapgps");
 
     // Color handler
@@ -210,13 +213,14 @@ int main(int argc, char *argv[])
         if (!pcap.empty())
         {
             std::cout << "Capture from PCAP file: " << pcap << std::endl;
-            grabber = std::make_shared<grabber::GPSVLPGrabber>(pcap, exportPcapGps);
+            grabber = std::make_shared<grabber::GPSVLPGrabber>(pcap, exportPcapGps, !noPPS);
         }
         else if (!ipaddress.empty() && !port.empty())
         {
             std::cout << "Capture from sensor " << ipaddress << ":" << port << std::endl;
             grabber = std::make_shared<grabber::GPSVLPGrabber>(boost::asio::ip::address::from_string(ipaddress),
-                                                               boost::lexical_cast<unsigned short>(port));
+                                                               boost::lexical_cast<unsigned short>(port),
+                                                               !noPPS);
         }
         else
         {
@@ -304,15 +308,17 @@ int main(int argc, char *argv[])
         consumer.addShareData(shareData);
     }
 
-    int i = 0;
+    int packetIdx = 0;
     grabberProducer.registerHandler(
         [&](const typename pcl::PointCloud<pcl::PointXYZI>::ConstPtr cloud)
         {
+            if(packetIdx++ < cloud_offset)
+                return;
+
             auto result = processorPipe.execute(cloud);
             consumer.show(result);
 
-            i++;
-            if (i % 100 == 0)
+            if (packetIdx % 100 == 0)
             {
                 compute::FileWriter<pcl::PointXYZI> fileWriter(pcap, writeFileType, time);
                 fileWriter.show(result);

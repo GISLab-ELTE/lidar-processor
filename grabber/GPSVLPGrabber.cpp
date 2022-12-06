@@ -25,11 +25,13 @@ using boost::asio::ip::udp;
 
 
 GPSVLPGrabber::GPSVLPGrabber (const std::string& pcapFile,
-                              bool logGpsPackets/* = false */)
+                              bool logGpsPackets/* = false */,
+                              bool requirePPS/* = true */)
     : pcl::VLPGrabber               (pcapFile)
     , pcapFile                      (pcapFile)
     , sigGPSPacketReady             (nullptr)
     , firstWrittenTimestamp         (0)
+    , requirePPS(requirePPS)
 {
     if (logGpsPackets) {
         std::size_t startPos = pcapFile.find_last_of ("/");
@@ -44,10 +46,12 @@ GPSVLPGrabber::GPSVLPGrabber (const std::string& pcapFile,
 
 
 GPSVLPGrabber::GPSVLPGrabber (const boost::asio::ip::address& ipAddress,
-                              const std::uint16_t port)
+                              const std::uint16_t port,
+                              bool requirePPS /* = true */)
     : pcl::VLPGrabber               (ipAddress, port)
     , sigGPSPacketReady             (nullptr)
     , listenGPSPacketEndpoint       (ipAddress, port)
+    , requirePPS(requirePPS)
 {
     Initialize ();
 }
@@ -144,7 +148,7 @@ void GPSVLPGrabber::ProcessGPSPacket ()
     GPSData data;
     GPSPacket packet;
     while (gpsDataQueue.dequeue (data)) {
-        if (data[202] != 2) // skip packets with non-synced status
+        if (requirePPS && data[202] != 2) // skip packets with non-synced status
             continue;
 
         std::uint32_t packetTimestamp = *reinterpret_cast<std::uint32_t*> (&data[198]);
