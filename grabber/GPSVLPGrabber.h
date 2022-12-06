@@ -77,6 +77,7 @@ private:
     std::unique_ptr<boost::asio::ip::udp::socket> listenGPSPacketSocket;
 
     bool requirePPS;
+    GPSPacket lastGpsPacket;
     
     void Initialize ();
     void ProcessGPSPacket ();

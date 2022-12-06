@@ -71,6 +71,7 @@ GPSVLPGrabber::~GPSVLPGrabber () noexcept
 void GPSVLPGrabber::Initialize ()
 {
     sigGPSPacketReady = createSignal<SigGPSPacketReadyT> ();
+    lastGpsPacket.timestamp = -1; // won't match first packet
 }
 
 
@@ -160,6 +161,10 @@ void GPSVLPGrabber::ProcessGPSPacket ()
         packet.timestamp = (system_time & 0x00000000ffffffffl) << 32 | packetTimestamp;
 
         if (NmeaParser::TryParseSentence (sentence, packet)) {
+            if(lastGpsPacket == packet)
+                continue;
+
+            lastGpsPacket = packet;
             if (gpsPacketOutputFile != nullptr) {
                 static std::uint32_t prevTransformedTimestamp;
                 std::uint32_t transformedTimestamp = helper::calculatePointCloudTimeStamp (packet.timestamp);

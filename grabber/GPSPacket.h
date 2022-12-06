@@ -10,6 +10,7 @@
 #ifndef OLP_GPSPACKET_H
 #define OLP_GPSPACKET_H
 
+#include "../helpers/Utility.h"
 
 namespace olp
 {
@@ -25,6 +26,15 @@ struct GPSPacket
 
     double accuracy;
     std::uint64_t timestamp;
+
+    bool operator== (GPSPacket& other)
+    {
+        return latitude == other.latitude &&
+               longitude == other.longitude &&
+               elevation == other.elevation &&
+               accuracy == other.accuracy &&
+               helper::calculatePointCloudTimeStamp(timestamp, 500000) == helper::calculatePointCloudTimeStamp(other.timestamp, 500000);
+    }
 };
 
 
