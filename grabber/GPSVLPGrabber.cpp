@@ -161,7 +161,7 @@ void GPSVLPGrabber::ProcessGPSPacket ()
         packet.timestamp = (system_time & 0x00000000ffffffffl) << 32 | packetTimestamp;
 
         if (NmeaParser::TryParseSentence (sentence, packet)) {
-            if(lastGpsPacket == packet)
+            if (lastGpsPacket == packet)
                 continue;
 
             lastGpsPacket = packet;

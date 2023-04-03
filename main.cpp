@@ -192,7 +192,7 @@ int main(int argc, char *argv[])
     bool withGPS = pcl::console::find_switch(argc, argv, "--withgps");
     bool exportPcapGps = pcl::console::find_switch(argc, argv, "--exportpcapgps");
     bool noPcapPps = pcl::console::find_switch(argc, argv, "--nopcappps");
-    bool noPcapEkf = pcl::console::find_switch(argc, argv, "--nopcapekf");
+    bool usePcapEkf = pcl::console::find_switch(argc, argv, "--usepcapekf");
 
     // Color handler
     std::shared_ptr<pcl::visualization::PointCloudColorHandler<pcl::PointXYZI>> color_handler;
@@ -278,7 +278,7 @@ int main(int argc, char *argv[])
 #endif
 
     if (withGPS) {
-        compute::GPSPacketCalculator<pcl::PointXYZI>* calculator = new compute::GPSPacketCalculator<pcl::PointXYZI>(startData, time, 500000, !noPcapEkf);
+        compute::GPSPacketCalculator<pcl::PointXYZI>* calculator = new compute::GPSPacketCalculator<pcl::PointXYZI>(startData, time, 500000, usePcapEkf);
         calculators.push_back(calculator);
         shareData->precisionMap.emplace(std::make_pair(calculators.back()->stringId(), 0.0));
 

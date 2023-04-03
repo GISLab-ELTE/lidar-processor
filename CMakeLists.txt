@@ -100,7 +100,6 @@ add_executable(olp
     helpers/CsvFileWriter.h
     helpers/Utility.h
     helpers/ViewerHelper.h
-    helpers/GPSExtrapolationHelper.hpp
     piping/ProcessorPipe.hpp
     compute/Processor.h
     compute/Producer.hpp
@@ -112,6 +111,9 @@ add_executable(olp
     compute/calculators/GPSPacketCalculator.hpp
     compute/calculators/ICPSLAMCalculator.hpp
     compute/calculators/LOAMSLAMCalculator.hpp
+    compute/calculators/GPSExtrapolationStrategy/GPSExtrapolationStrategy.hpp
+    compute/calculators/GPSExtrapolationStrategy/EKFExtrapolationStrategy.hpp
+    compute/calculators/GPSExtrapolationStrategy/PoliExtrapolationStrategy.hpp
     compute/IMUProcessor.hpp
     compute/IMU/MadgwickAHRS/MadgwickAHRS.h compute/IMU/MadgwickAHRS/MadgwickAHRS.cpp
     grabber/GPSPacket.h
