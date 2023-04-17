@@ -17,6 +17,7 @@ For proper using the program you need the following files:
     * replace the `.txt` extension with `.csv`
     * replace `,` with `;`
     * replace `.` with `,`
+ - Online GPS export: using the `--exportpcapgps` switch, the GPS data read from the LiDAR *PCAP* file can be exported to a separate *CSV* file, allowing it to be run in offline mode with the `--pcapcsvfile` option. (Similar to the `--csvfile` and `--mcsvfile` options.)
 
 ## How to run
 
@@ -30,9 +31,10 @@ The following parameters could be given:
 | `--file <path>`     |    YES    | *PCAP* file path. |
 | `--csvfile <path>`  |    YES*   | *CSV* file path for Stonex sensor data. |
 | `--mcsvfile <path>` |    YES*   | *CSV* file path for mobile GNSS sensor data. |
+| `--pcapcsvfile <path>` | YES*   | *CSV* file path for gps sensor data exported from running the program with an online GPS and the `--exportpcapgps` switch. |
 | `--stime <time>`    |           | The UNIX epoch time of the first frame in the *PCAP* file. |
 | `--filter`   |           | Apply an *origo filter*, measured LiDAR point closer to 1 meter or further than 16 meters from the sensor are cropped out. |
 | `--wftype <pcd \| las>`   |           | The output file format (`pcd` and `las` are supported.) Defaults to `las`. |
 
 
-\* You may either specify `--csvfile` or `--mcsvfile`, or both of them.
+\* You may specify any combination of `--csvfile`, `--mcsvfile`, `--pcapcsvfile`, as long as at least one of them is given.

@@ -18,16 +18,34 @@ olp --file datafile.pcap
 ```
 To be able to read from file, the *PCL* dependency must be compiled with PCAP support (see [How to compile](#how-to-compile)).
 
+### Skip a certain number of clouds
+It is possible to omit the first *N* cloud frames with the `--offset <N>` option.
+
 ### Localization and mapping
 The program currently supports the dynamic localization of acquired point clouds with GNSS data or through SLAM algorithms.
 
-#### Localization with GNSS sensor
+#### Localization with GNSS sensor (offline)
 For further details and examples, see the guide on [Localization and mapping with GNSS sensor](doc/LOCALIZATION_GNSS.md).
+
+#### Localization with GNSS sensor (online)
+By connecting a GNSS receiver to the Velodyne sensor, the oroduced PCAP packages will contain GNSS data as well.
+```bash
+olp --file datafilewithgnss.pcap --withgps
+```
+By default, only GNSS packets with the pulse-per-second (PPS) signal set will be used. In case you did not manage to synchronize PPS between GNSS and the LiDAR sensor, this restriction can be lifted with the `--nopcappps` option.
+
+If a GNSS packet is not available at the time of processing a cloud frame, one will be extrapolated using the previous ones. To replace the default extrapolation method with an experimental, Kalman filter-based one, use the `--usepcapekf` switch.
 
 #### Localization with SLAM algorithms
 An ICP (*Iterative closest point*) and a LOAM (*LiDAR Odometry and Mapping*) algorithm is supported for now, with the ICP producing a better result.
 ```bash
 olp --file datafile.pcap --slamtype icp
+```
+
+#### Localization with ICP aided by IMU sensor data
+The ICP approach has the option to be aided by the data from an IMU (*Inertial Measurement Unit*) sensor, improving the outputted results.
+```bash
+olp --file datafile.pcap --slamtype icp --imucsv imudata.csv
 ```
 
 ## How to compile
